@@ -1,0 +1,39 @@
+{
+  "$schema": "../config.example.json",
+  "_comment": "路由规则配置示例",
+  "_description": "复制此文件到您的配置目录，根据需求修改路由规则",
+
+  "knowledgeBases": {
+    "enabled": true,
+    "autoCreateTables": true,
+    "builtinCategories": ["personal", "work"],
+    "customCategories": ["priority", "reference"]
+  },
+
+  "routingRules": [
+    {
+      "name": "personal",
+      "patterns": ["个人 | 笔记|diary| 随笔 | 日记"],
+      "targetTable": "knowledge_personal",
+      "enabled": true
+    },
+    {
+      "name": "work",
+      "patterns": ["工作 | 项目|work|project| 任务"],
+      "targetTable": "knowledge_work",
+      "enabled": true
+    },
+    {
+      "name": "priority",
+      "patterns": ["重点|重要 |priority|critical"],
+      "targetTable": "knowledge_priority",
+      "enabled": true
+    },
+    {
+      "name": "reference",
+      "patterns": ["参考|资料 |reference|docs?"],
+      "targetTable": "knowledge_reference",
+      "enabled": false
+    }
+  ]
+}

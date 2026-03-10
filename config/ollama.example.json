@@ -1,0 +1,55 @@
+/**
+ * Ollama 配置示例
+ *
+ * 使用方法：
+ * 1. 复制此文件到 openclaw.plugin.json
+ * 2. 确保 Ollama 服务运行在 http://localhost:11434
+ * 3. 确保已拉取嵌入模型：ollama pull nomic-embed-text 或 ollama pull mxbai-embed-large
+ *
+ * 可用模型：
+ * - nomic-embed-text (768 维) - 推荐，性能好
+ * - mxbai-embed-large (1024 维) - 最大向量维度
+ * - all-minilm (384 维) - 轻量级模型
+ * - snowflake-arctic-embed (多种尺寸)
+ */
+{
+  "id": "memory-autodb",
+  "config": {
+    "embedding": {
+      "apiKey": "ollama",
+      "baseURL": "http://localhost:11434/v1",
+      "model": "nomic-embed-text"
+    },
+
+    "dbType": "lancedb",
+    "dbPath": "~/.openclaw/memory/autodb",
+
+    "autoCapture": true,
+    "autoRecall": true,
+    "recallIncludeDocuments": false,
+    "captureMaxChars": 500,
+
+    // 多知识库配置
+    "knowledgeBases": {
+      "enabled": true,
+      "autoCreateTables": true,
+      "builtinCategories": ["personal", "work"]
+    },
+
+    // 路由规则配置
+    "routingRules": [
+      {
+        "name": "personal",
+        "patterns": ["个人 | 笔记|diary| 随笔 | 日记"],
+        "targetTable": "knowledge_personal",
+        "enabled": true
+      },
+      {
+        "name": "work",
+        "patterns": ["工作 | 项目|work|project| 任务"],
+        "targetTable": "knowledge_work",
+        "enabled": true
+      }
+    ]
+  }
+}
