@@ -372,6 +372,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 2. **本地可运行的一键体验**
    - agentmemory 和 Supermemory 都证明本地安装、连接和诊断体验会直接影响 adoption。
    - memory-autodb 必须补 `ltm serve`、`ltm connect openclaw`、`ltm doctor`、`ltm demo`。
+   - Mem0 和 Supermemory 的启发不是复杂命令体系，而是“先 add/init，再 search/context”的低门槛入口；memory-autodb 应把 `ltm init` 做成 Project Memory Workspace 的默认入口。
 
 3. **可解释上下文**
    - Zep、Graphiti、Supermemory 都强调 prompt-ready context，而不是裸 hits。
@@ -397,6 +398,13 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
    - LightRAG 的 local/global/hybrid/mix 模式说明，树/图不是只给 UI 看。
    - memory-autodb 的 source/topic/global tree 应分别服务来源追溯、主题实体召回、整体预览，并在 `lookup deep` 中参与融合。
 
+9. **本地项目目录应成为一等输入**
+   - Mem0/Supermemory 的 `add/search/profile/context` 思路说明，用户和开发者需要极低摩擦的写入与查询入口。
+   - LightRAG 的文档状态存储、增量更新、图/向量/KV 分层说明，目录内容不能只被一次性扫进向量库。
+   - memory-autodb 应引入 Project Memory Workspace：用户在本地目录执行 `ltm init` 后，系统创建 project identity、manifest、source roots、ingest policy 和增量更新链路。
+   - 一个 project workspace 应支持多个 source root；每个 root 有 role、include/exclude、contentHash、lastIndexedAt 和 tree routing policy。
+   - `ltm project refresh/watch` 处理文件系统增量，`memory_session_commit` 处理 Agent 运行时增量，两者都写回同一 project scope。
+
 ### 6.2 必须避免的误区
 
 1. **不要把 memory-autodb 做成另一个大而全 SaaS API**
@@ -418,6 +426,11 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
    - 向量库适合语义召回单元，不适合保存审计、候选状态、权限、原始大文件、树结构真源。
    - 向量索引应可重建，不能成为唯一真源。
 
+7. **不要把 `ltm init` 做成隐式全量上传或全量向量化**
+   - 初始化应建立 project identity、manifest、scope、source root 和 ingest policy。
+   - 首次索引和后续 refresh 都必须尊重 include/exclude、隐私策略、contentHash 和 manifest diff。
+   - 本地项目目录默认只保存轻量指针，原始 evidence 和记忆主库默认在用户本机全局库。
+
 ---
 
 ## 7. 差异化定位
@@ -427,10 +440,11 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 它们更像“Memory API + 平台”。memory-autodb 应强调：
 
 1. 本地默认可用，不依赖云端 API。
-2. OpenClaw 插件和中间件一体，不需要外部记忆 SaaS。
-3. 5 槽位上下文服务 Agent 启动任务，而不是只提供 search。
-4. 候选区和人工/产品治理是第一等能力。
-5. 开源评测和内置黄金集随仓库维护。
+2. 本地目录可通过 `ltm init` 成为 Project Memory Workspace，而不是只把记忆交给云端 profile API。
+3. OpenClaw 插件和中间件一体，不需要外部记忆 SaaS。
+4. 5 槽位上下文服务 Agent 启动任务，而不是只提供 search。
+5. 候选区和人工/产品治理是第一等能力。
+6. 开源评测和内置黄金集随仓库维护。
 
 ### 7.2 和 Zep / Graphiti 比
 

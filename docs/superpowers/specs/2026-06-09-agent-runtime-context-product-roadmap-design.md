@@ -27,6 +27,7 @@
 | D7 | Console 的产品定位是信任与治理入口 | Console 要回答“为什么这段记忆被注入、来源是什么、如何撤销”，不是普通数据库浏览器 |
 | D8 | Knowledge 是 evidence/source/resource 辅助层 | 不把 knowledge scan 扩张成通用 RAG 平台 |
 | D9 | 证明架构提升必须依赖自动化评测 | 内置黄金集、开源 benchmark、延迟/成本、安全误注入和接口一致性必须进入 release gate |
+| D10 | 本地目录可以被初始化为 Project Memory Workspace | 目录是用户工作上下文的 project root，`ltm init` 建立 identity、manifest、scope 和后续增量更新链路 |
 
 ---
 
@@ -159,6 +160,7 @@ Runtime View Layer
 | Explicit save | `memory_save_explicit` | 用户明确要求记住的偏好、规则、事实 | Source/Evidence + Durable Memory 或 candidate |
 | Session commit | `memory_session_commit` | 会话摘要、任务状态、决策和未完成项 | Source/Evidence + task_context/experience candidate |
 | Document ingest | `memory_scan_directory` / ingest API | 文档、Markdown、连接器内容 | Local file/CAS + Document/Chunk + index/tree jobs |
+| Project workspace lifecycle | `ltm init` / `ltm project refresh` | 本地 project identity、source roots、目录层级和 ingest policy | Project manifest + Source/Evidence + index/tree delta jobs |
 | Console governance | Console API | approve/reject/revoke/archive/correct | Candidate/Governance + audit + snapshot invalidation |
 | Import / migration | import API / CLI | 外部记忆、导出包、历史数据 | staged import + validation + Durable Memory |
 
@@ -173,6 +175,7 @@ interface MemoryInputEnvelope {
     | "explicit_save"
     | "session_commit"
     | "document_ingest"
+    | "project_workspace"
     | "console_action"
     | "import";
   text?: string;
@@ -191,6 +194,149 @@ interface MemoryInputEnvelope {
 3. `contentHash` 是幂等和去重主键之一。
 4. 原始大 payload 不直接塞进向量库。
 5. Runtime observation 必须快速 ack，不等待 embedding、LLM 抽取或 tree seal。
+
+#### 3.4.1.1 Project Memory Workspace
+
+Project Memory Workspace 是本地优先产品形态的核心输入模型：
+
+> 本地目录是用户工作上下文的 project root；项目目录只保存轻量 manifest，记忆数据默认保存在用户本地全局库。
+
+这意味着 `ltm init` 不是把所有文件一次性塞进向量库，而是建立长期可增量维护的工作上下文边界：
+
+1. **project identity**：为当前目录生成稳定 `projectId/workspaceId`，并记录用户、scope、创建时间和 schema version。
+2. **project manifest**：在项目目录写入轻量指针文件，例如 `.memory-autodb.json`。
+3. **source root registry**：记录一个或多个本地目录根，每个根都有 role、include/exclude、hash、最近索引时间和树路由策略。
+4. **ingest policy**：声明哪些文件进入 source/evidence，哪些文件进入 chunk/vector/BM25，哪些文件只作为文件引用。
+5. **privacy policy**：默认本地私有；不会因为目录被初始化就自动上传到第三方。
+6. **incremental update chain**：后续通过 `ltm project refresh`、`ltm project watch` 或 `memory_session_commit` 局部更新，而不是每次全量重建。
+
+推荐布局：
+
+```text
+/path/to/project/
+  .memory-autodb.json       # 轻量指针和本项目声明，可选择是否纳入版本管理
+
+~/.memory-autodb/
+  registry.json             # 本机 project/workspace registry
+  projects/
+    <project-id>/
+      manifest.json         # 完整 manifest
+      evidence/             # raw/canonical source 指针或快照
+      exports/              # 可读导出和备份
+      indexes/              # 可重建本地索引状态
+```
+
+设计规则：
+
+1. 项目目录默认不保存原始记忆数据，避免把私人记忆误提交到 git。
+2. `.memory-autodb.json` 只保存 project pointer、schema、local store id 和可审查配置；完整数据在用户本机全局库。
+3. 用户显式配置后，才允许把可读 export 或团队共享 manifest 放进项目仓库。
+4. project workspace 的 scope 优先级高于单次 session；session 结束后通过 commit 写回 project 上下文。
+5. project workspace 可以绑定多个 source root，不等同于单个文件夹。
+
+Manifest 逻辑模型：
+
+```typescript
+interface ProjectMemoryManifest {
+  projectId: string;
+  workspaceId: string;
+  displayName: string;
+  createdAt: number;
+  updatedAt: number;
+  schemaVersion: string;
+  scopeDefaults: {
+    tenantId: string;
+    userId: string;
+    workspaceId: string;
+    projectId: string;
+    visibility: "private" | "workspace" | "team";
+  };
+  sourceRoots: ProjectSourceRoot[];
+  ingestPolicy: ProjectIngestPolicy;
+  privacyPolicy: ProjectPrivacyPolicy;
+  lastIndexedAt?: number;
+  contentTreeHash?: string;
+}
+
+interface ProjectSourceRoot {
+  rootId: string;
+  path: string;
+  role:
+    | "project_root"
+    | "docs"
+    | "notes"
+    | "assets"
+    | "external_reference"
+    | "generated_output";
+  include: string[];
+  exclude: string[];
+  followSymlinks: boolean;
+  treeRoutingPolicy: {
+    sourceTree: boolean;
+    topicTree: boolean;
+    globalTree: boolean;
+    defaultResourceVisibility: "private" | "workspace";
+  };
+  lastIndexedAt?: number;
+  contentHash?: string;
+}
+```
+
+多目录处理：
+
+1. 一个 project workspace 可以有多个 `sourceRoots[]`，例如当前项目目录、外部资料目录、会议纪要目录、设计稿目录。
+2. 每个 source root 必须有独立 `rootId`，避免同名目录或路径移动导致 source identity 混乱。
+3. `role=project_root` 负责项目主上下文；`docs/notes/assets/external_reference` 默认进入 `resource` 候选；`generated_output` 默认只做 evidence，不自动升格为长期规则。
+4. source root 的 include/exclude 优先于全局扫描配置；敏感目录如 `.git`、`node_modules`、密钥文件、构建产物默认排除。
+5. 跨目录召回时先按 scope 过滤，再按 `rootId/role/path` 做 resource 排序和 evidence 展示。
+
+目录层级更新：
+
+| 变更 | 处理 |
+|------|------|
+| 文件新增 | 写入 DocumentRecord/ChunkRecord，更新 Source Tree leaf，按 policy 建索引 |
+| 文件修改 | 比较 contentHash，失效旧 chunk/index/tree node，生成 delta job |
+| 文件删除 | DocumentRecord 标记 deleted/stale，向量/BM25 tombstone，相关 tree summary 标记 stale |
+| 文件重命名/移动 | 若 contentHash 匹配，保留 document identity，更新 path provenance 和 Source Tree 路径 |
+| 目录移动 | 更新 source root 或 path prefix 映射，不全量重建内容相同的文件 |
+| include/exclude 改变 | 重新计算 manifest diff，只处理策略影响到的文件 |
+
+增量链路：
+
+```text
+ltm project refresh / watch event
+  -> load project manifest
+  -> scan sourceRoots with include/exclude
+  -> compute manifest diff and contentHash delta
+  -> update DocumentRecord / ChunkRecord / Source metadata
+  -> tombstone deleted or excluded items
+  -> enqueue vector/BM25/tree/summary jobs for changed nodes
+  -> mark affected Source/Topic/Global TreeSummaryNode stale
+  -> refresh project SlotSnapshot only for affected slots
+```
+
+CLI 产品流：
+
+| 命令 | 作用 |
+|------|------|
+| `ltm init` | 在当前目录初始化 Project Memory Workspace，生成本地 project identity 和 manifest |
+| `ltm project status` | 查看 project scope、source roots、索引新鲜度、候选区和失败 job |
+| `ltm project add-root <path>` | 增加一个 source root，并设置 role/include/exclude |
+| `ltm project index` | 首次索引当前 project workspace |
+| `ltm project refresh` | 对 source roots 做 manifest diff 和增量更新 |
+| `ltm project watch` | 监听文件变化并批量触发 refresh job |
+| `ltm project commit` | 把当前 session summary、决策、资源变化写回 project memory |
+| `ltm project lookup <query>` | 在当前 project scope 下速查记忆、资源和 evidence |
+| `ltm project context` | 预览当前 Agent Runtime 会拿到的 5 slot context |
+
+`memory_session_commit` 和 `ltm project refresh` 的边界：
+
+| 动作 | 更新什么 | 不负责什么 |
+|------|----------|------------|
+| `memory_session_commit` | 会话摘要、用户决策、任务状态、运行经验、显式资源线索 | 文件系统全量扫描 |
+| `ltm project refresh` | 本地目录内容、文件新增/修改/删除、目录层级和文档证据 | 判断运行结论是否应成为长期规则 |
+
+这两个动作最终都写入同一个 project workspace scope，但它们的输入来源、延迟要求和智能抽取策略不同。
 
 #### 3.4.2 落盘流程
 
@@ -223,6 +369,8 @@ async jobs
 | `save_explicit` | evidence、MemoryRecord 或 CandidateRecord、audit | embedding、slot snapshot refresh、tree/graph update |
 | `session_commit` | session summary evidence、audit | task_context/experience candidate、global tree digest |
 | document ingest | raw/canonical file、DocumentRecord、ChunkRecord、job | chunk embedding、entity/relation、source tree、topic tree |
+| project workspace init | project pointer、manifest、source root registry、audit | initial index job、source tree bootstrap、slot snapshot warmup |
+| project refresh/watch | manifest diff、Document/Chunk delta、tombstone、audit | vector/BM25 delta、tree stale/seal、topic/global summary refresh |
 | console approve | Candidate status、MemoryRecord、audit | vector index、slot snapshot invalidation、tree route |
 | console revoke | lifecycleStatus、audit | vector tombstone / snapshot invalidation |
 
@@ -394,6 +542,18 @@ Tree 存储对象：
 4. tree summary 可进入向量库，但必须以 source/tree node 为真源重建。
 5. revoke/supersede 某条 memory 时，要标记相关 TreeSummaryNode stale，而不是立即全量重建。
 6. Console 展示的记忆树是 TreeSummaryNode + evidence 的渲染结果，不是用户直接编辑的主库文件。
+
+目录层级到记忆树的映射：
+
+| 目录信息 | 进入哪棵树 | 说明 |
+|----------|------------|------|
+| `sourceRoot.rootId/path/role` | Source Tree | 保留本地目录来源、层级、文件移动和删除状态 |
+| 文件标题、Markdown heading、frontmatter | Source Tree / Topic Tree | 作为 source summary 和 topic routing 信号 |
+| 文件内容 chunk | Source Tree leaf | chunk 是 evidence 叶子，不直接等同长期记忆 |
+| 抽取出的项目、工具、人物、资源实体 | Topic Tree | 围绕实体形成可召回主题上下文 |
+| project daily/weekly/session digest | Global Tree | 支持整体预览和项目级 task_context |
+
+目录层级变化只应局部影响对应 `sourceRoot/path` 子树。若文件移动但 `contentHash` 不变，应更新 Source Tree 路径和 provenance，不应重复生成长期记忆。
 
 LightRAG 映射：
 

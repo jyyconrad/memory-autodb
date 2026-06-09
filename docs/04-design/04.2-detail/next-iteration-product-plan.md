@@ -84,10 +84,11 @@
 |------|------|------|
 | P0-1 | 用户工作上下文 scope 和授权复用规则 | 让不同授权 Agent 产品能复用同一用户工作上下文 |
 | P0-2 | Agent Runtime 快路径增强 | 让 runtime 一次拿到 context、warnings、evidence、telemetry |
-| P0-3 | `ltm doctor` / `ltm demo` / `ltm connect openclaw` | 降低接入成本和排障成本 |
-| P0-4 | Console Overview + Quick Lookup 强化 | 让用户能速查、预览和追溯长记忆，不只是看数据库 |
-| P0-5 | 候选区最小可见闭环 | 让自动抽取可审核、可解释、可清理 |
-| P0-6 | 内置黄金集和 quick eval | 用固定评测证明新架构确实提升 |
+| P0-3 | Project Memory Workspace：`ltm init` / project manifest / 多 source root | 让本地目录成为用户工作上下文的长期 project root |
+| P0-4 | `ltm doctor` / `ltm demo` / `ltm connect openclaw` | 降低接入成本和排障成本 |
+| P0-5 | Console Overview + Quick Lookup 强化 | 让用户能速查、预览和追溯长记忆，不只是看数据库 |
+| P0-6 | 候选区最小可见闭环 | 让自动抽取可审核、可解释、可清理 |
+| P0-7 | 内置黄金集和 quick eval | 用固定评测证明新架构确实提升 |
 
 ### 4.2 暂不做
 
@@ -136,7 +137,7 @@
 
 5type 是 Runtime 运行视图，不是长期记忆主库的全量存储模型。下一迭代需要明确输入、落盘、存储介质、记忆树和从存储视图到 5 slot 的召回管线。
 
-产品输入分六类：
+产品输入分七类：
 
 | 输入 | 入口 | 默认落盘路由 |
 |------|------|--------------|
@@ -144,6 +145,7 @@
 | Explicit save | `memory_save_explicit` | evidence + MemoryRecord 或 candidate |
 | Session commit | `memory_session_commit` | session evidence + task/experience candidate |
 | Document ingest | scan / ingest API | local file + Document/Chunk + index/tree jobs |
+| Project workspace lifecycle | `ltm init` / `ltm project refresh` | project manifest + source root delta + index/tree jobs |
 | Console governance | Console API | candidate/audit/lifecycle + snapshot invalidation |
 | Import / migration | import API / CLI | staged import + validation + durable memory |
 
@@ -205,6 +207,59 @@ normalize scope
 
 LightRAG 的 `naive/local/global/mix` 可作为 `lookup_deep` 的理论参考：chunk/vector 对应 naive，Topic Tree 对应 local，Global/Source Tree 对应 global，tree + graph + vector 融合对应 mix。`context_fast` 不走 mix，避免延迟和成本失控。
 
+### 5.2.1 Project Memory Workspace
+
+下一迭代需要把“本地目录”提升为一等输入，而不是只把目录扫描当成一次性 knowledge ingest。
+
+产品定义：
+
+> Project Memory Workspace 是用户工作上下文的本地 project root。用户在某个目录执行 `ltm init` 后，memory-autodb 为该目录建立 project identity、scope、manifest、source roots 和增量更新链路。
+
+推荐默认流程：
+
+```bash
+cd /path/to/project
+ltm init
+ltm project index
+ltm project context
+```
+
+初始化不应把所有文件直接塞进向量库。它应做四件事：
+
+1. 在项目目录生成轻量 `.memory-autodb.json` 指针。
+2. 在用户本地全局库创建 `~/.memory-autodb/projects/<project-id>/manifest.json`。
+3. 建立默认 source root：当前目录为 `role=project_root`，并应用 include/exclude。
+4. 创建初始 indexing job，后续由 `ltm project refresh` 或 watch 增量更新。
+
+多目录模型：
+
+| 概念 | 说明 |
+|------|------|
+| project root | 当前工作上下文的主目录和默认 `projectId` 来源 |
+| source root | 参与同一 project workspace 的一个本地目录，可有多个 |
+| root role | `project_root`、`docs`、`notes`、`assets`、`external_reference`、`generated_output` |
+| tree routing | source root 可决定是否进入 Source Tree、Topic Tree、Global Tree |
+| ingest policy | 每个 root 的 include/exclude、敏感文件排除、chunk/index 策略 |
+
+目录层级更新：
+
+| 变化 | 处理 |
+|------|------|
+| 文件新增/修改 | 更新 Document/Chunk，触发 vector/BM25 和 Source Tree delta |
+| 文件删除 | 标记 deleted/stale，tombstone 索引，相关 tree summary stale |
+| 文件移动/重命名 | contentHash 相同则保留 document identity，只更新 path provenance |
+| source root 增删 | 更新 manifest，按 rootId 局部创建或失效 tree/index |
+| include/exclude 改动 | 通过 manifest diff 只处理策略影响到的文件 |
+
+Session commit 和 project refresh 的边界必须清楚：
+
+| 机制 | 输入 | 主要产物 |
+|------|------|----------|
+| `memory_session_commit` | Agent 运行摘要、决策、任务状态、资源线索 | task_context / experience candidate、global digest |
+| `ltm project refresh` | 本地文件系统变化、目录层级变化 | Document/Chunk delta、source/topic/global tree stale/seal、resource candidate |
+
+验收重点不是“扫描了多少文件”，而是当前 project scope 下能不能快速得到准确的 `context_fast`、可追溯的 `lookup`、以及 Console 中可理解的整体预览。
+
 ### 5.3 Agent Runtime 快路径增强
 
 当前 `AgentFastPathService` 已有：
@@ -247,10 +302,19 @@ interface AgentContextFastResult {
 
 ### 5.4 接入体验：connect / doctor / demo
 
-当前已有 `ltm serve/status/health/migrate`。下一迭代补三个产品化命令：
+当前已有 `ltm serve/status/health/migrate`。下一迭代补 project workspace 命令和三个产品化接入命令：
 
 | 命令 | 作用 |
 |------|------|
+| `ltm init` | 在当前目录初始化 Project Memory Workspace |
+| `ltm project status` | 查看 project scope、source roots、索引新鲜度、candidate backlog 和失败 job |
+| `ltm project add-root <path>` | 增加一个本地 source root，并声明 role/include/exclude |
+| `ltm project index` | 首次索引当前 project workspace |
+| `ltm project refresh` | 基于 manifest diff 和 contentHash 做增量更新 |
+| `ltm project watch` | 监听目录变化，批量触发 refresh job |
+| `ltm project commit` | 把当前 session 摘要、决策和资源变化写回 project memory |
+| `ltm project lookup <query>` | 在当前 project scope 下速查记忆、资源和 evidence |
+| `ltm project context` | 预览当前 5 slot context |
 | `ltm doctor` | 检查配置、server、DB、embedding、scope、REST、Console 静态资源 |
 | `ltm demo` | 写入一组用户工作上下文 demo 记忆，并演示不同 `appId` 下的 context/lookup |
 | `ltm connect openclaw` | 输出 OpenClaw adapter 接入配置、server URL、secret、scope 示例 |
@@ -313,28 +377,34 @@ npx tsx eval/cli.ts compare --base baseline-v4 --candidate vnext
 
 ## 6. 里程碑拆分
 
-### Milestone A：用户工作上下文 scope 和快路径可用
+### Milestone A：Project Workspace、scope 和快路径可用
 
-目标：让两个不同 `appId` 的授权 Agent 产品能复用同一用户的稳定工作上下文，并通过 `memory_context_fast` 使用。
+目标：让本地目录可以被初始化为 Project Memory Workspace，并让两个不同 `appId` 的授权 Agent 产品能复用同一用户的稳定工作上下文，通过 `memory_context_fast` 使用。
 
 交付：
 
-1. `scope policy` 实现和测试。
-2. 存储视图和 Recall-to-5type 管线实现和测试。
-3. OpenClaw adapter 支持 `appId/workspaceId/projectId` 推导或传入。
-4. `/v1/agent/context` 返回 warnings、filtered、evidence、telemetry。
-5. `memory_context_fast` 工具输出与 REST 对齐。
-6. 文档示例：一个 `appId` 写入，另一个 `appId` 在同一用户 scope 下召回。
+1. `ltm init` 创建 `.memory-autodb.json` 和本地 project manifest。
+2. `sourceRoots[]` 支持多目录、role、include/exclude 和 rootId。
+3. `ltm project index/status/refresh/context/lookup` 最小可用。
+4. `scope policy` 实现和测试。
+5. 存储视图和 Recall-to-5type 管线实现和测试。
+6. OpenClaw adapter 支持 `appId/workspaceId/projectId` 推导或传入。
+7. `/v1/agent/context` 返回 warnings、filtered、evidence、telemetry。
+8. `memory_context_fast` 工具输出与 REST 对齐。
+9. 文档示例：在本地 project root 初始化后，一个 `appId` 写入，另一个 `appId` 在同一用户 scope 下召回。
 
 验收：
 
-1. 两个 `appId` 在同一 `userId/workspaceId` 下复用 profile/rules。
-2. task_context 不跨 project 泄漏。
-3. private/revoked 不进入 context。
-4. pending candidate、raw observation、raw chunk 不进入 `context_fast`。
-5. 无 `semanticType` 的合规记忆仍可通过 `memory_lookup` 命中。
-6. 每个 slot block 有 source/evidence 引用。
-7. `npx tsc --noEmit` 和相关 Vitest 通过。
+1. 在任意本地目录执行 `ltm init` 后可看到稳定 project identity 和 manifest。
+2. 一个 project workspace 可配置至少两个 source roots，增量 refresh 只处理变化文件。
+3. 文件移动但 contentHash 不变时不重复生成长期记忆。
+4. 两个 `appId` 在同一 `userId/workspaceId` 下复用 profile/rules。
+5. task_context 不跨 project 泄漏。
+6. private/revoked 不进入 context。
+7. pending candidate、raw observation、raw chunk 不进入 `context_fast`。
+8. 无 `semanticType` 的合规记忆仍可通过 `memory_lookup` 命中。
+9. 每个 slot block 有 source/evidence 引用。
+10. `npx tsc --noEmit` 和相关 Vitest 通过。
 
 ### Milestone B：本机接入体验
 
@@ -345,13 +415,15 @@ npx tsx eval/cli.ts compare --base baseline-v4 --candidate vnext
 1. `ltm doctor`。
 2. `ltm demo`。
 3. `ltm connect openclaw`。
-4. README 和 CLI 文档更新。
+4. project workspace CLI 示例。
+5. README 和 CLI 文档更新。
 
 验收：
 
 1. 没有 embedding 服务时，doctor 能区分 warning 和 fatal。
 2. demo 能写入用户工作上下文样例，并在不同 `appId` 下输出 context/lookup 结果。
 3. connect 输出可复制的 server URL、secret、scope 示例。
+4. `ltm init -> ltm project index -> ltm project context` 能在 10 分钟内跑通。
 
 ### Milestone C：Console 和候选区闭环
 
@@ -400,8 +472,9 @@ npx tsx eval/cli.ts compare --base baseline-v4 --candidate vnext
 | 改动 | 同步文档 |
 |------|----------|
 | scope policy | `docs/03-architecture/product-positioning.md`、`docs/06-database/schema.md` |
+| Project Memory Workspace | `docs/03-architecture/product-positioning.md`、`docs/05-api/cli-commands.md`、`docs/04-design/04.2-detail/next-iteration-product-plan.md` |
 | `/v1/agent/context` 输出增强 | `docs/05-api/memory-api.md` |
-| `ltm doctor/demo/connect` | `docs/05-api/cli-commands.md` |
+| `ltm init/project/doctor/demo/connect` | `docs/05-api/cli-commands.md` |
 | Console Candidates | `docs/04-design/04.1-overview/web-console-design.md` |
 | eval quick runner | `docs/07-test/memory-evaluation-plan.md`、`docs/07-test/README.md` |
 | 版本发布 | `docs/09-changelog/` |
