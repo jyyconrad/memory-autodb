@@ -7,6 +7,7 @@
 | 文档 | 状态 | 说明 |
 |------|------|------|
 | [plugin-test.md](./plugin-test.md) | 当前 | OpenClaw 插件、中间件、REST、MCP、SDK、ingestion、retrieval、graph、tree、console、migration、lifecycle 的验证命令 |
+| [memory-evaluation-plan.md](./memory-evaluation-plan.md) | 设计中 | 记忆架构效果评测方案，覆盖开源 benchmark、内置黄金集、AI 自动准备和自动执行 |
 
 ## 推荐验证
 

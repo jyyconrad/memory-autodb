@@ -2,7 +2,7 @@
   "name": "@openclaw/memory-autodb",
   "version": "2026.3.9",
   "private": true,
-  "description": "OpenClaw AutoDb-backed（Also Allow LanceDb) long-term memory plugin with auto-recall/capture",
+  "description": "Local-first memory middleware for OpenClaw-type Agent Runtime products with auto-recall/capture",
   "type": "module",
   "dependencies": {
     "@lancedb/lancedb": "^0.26.2",

@@ -32,7 +32,7 @@ export interface SlotContextBlock {
 export interface AgentTaskContextRequest {
   scope: MemoryScopeInput;
   task: string;
-  intent?: "chat" | "coding" | "research" | "writing" | "ops" | "unknown";
+  intent?: "chat" | "research" | "writing" | "ops" | "customer_support" | "workflow" | "unknown";
   constraints?: string[];
   tokenBudget?: number;
   latencyBudgetMs?: number;

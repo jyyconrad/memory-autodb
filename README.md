@@ -1,11 +1,13 @@
 # memory-autodb
 
-memory-autodb 是 OpenClaw 的长期记忆插件，也正在演进为可复用的本机记忆中间件。它用 LanceDB、Supabase 或 Postgres 保存对话记忆和文档知识，提供自动捕获、自动召回、目录扫描、CLI、REST、MCP facade、JS SDK 和 Web Console 基线能力。
+memory-autodb 是面向多产品 Agent Runtime 的本地优先记忆中间件，主要服务 OpenClaw 类型产品之间的工作记忆连续性。它让同一用户在不同 Claw 产品之间切换时，工作记忆、协作偏好、长期约束、历史经验和可用资源仍然持续存在。
+
+它从 OpenClaw 长期记忆插件演进而来，用 LanceDB、Supabase 或 Postgres 保存对话记忆和文档知识，提供自动捕获、自动召回、目录扫描、CLI、REST、MCP facade、JS SDK 和 Web Console 基线能力。当前产品方向暂不进入 coding-agent 细分领域。
 
 当前代码同时保留两条边界：
 
 - **OpenClaw 插件兼容层**：`memory_store`、`memory_recall`、`memory_scan_directory`、`memory_cleanup`、自动捕获和自动召回继续可用。
-- **memory middleware 基线**：`MemoryService`、REST `/v1/*`、MCP tool adapter、JS SDK、ingestion pipeline、BM25/RRF/context packer、graph/tree/console 的 in-memory baseline 已落地。
+- **多产品 Agent Runtime 记忆层**：`MemoryService`、REST `/v1/*`、MCP tool adapter、JS SDK、ingestion pipeline、BM25/RRF/context packer、graph/tree/console 的 in-memory baseline 已落地，并面向多个 OpenClaw 类产品共享。
 
 ## 快速开始
 
@@ -103,6 +105,7 @@ curl -X POST http://127.0.0.1:3847/v1/context \
 | 读者目标 | 文档 |
 |----------|------|
 | 快速了解文档结构 | [docs/README.md](./docs/README.md) |
+| 理解产品定位 | [product-positioning.md](./docs/03-architecture/product-positioning.md) |
 | 使用 CLI、REST、OpenClaw 工具 | [docs/05-api](./docs/05-api/README.md) |
 | 理解当前中间件架构 | [memory-middleware-architecture.md](./docs/03-architecture/memory-middleware-architecture.md) |
 | 理解长期深层优化方案 | [memory-autodb-deep-optimization-architecture.md](./docs/03-architecture/memory-autodb-deep-optimization-architecture.md) |
@@ -138,7 +141,7 @@ curl -X POST http://127.0.0.1:3847/v1/context \
 |--------|------|
 | v2.1 | OpenClaw 插件、多表存储、CLI、扫描、自动捕获/召回的兼容能力 |
 | v3.0 | 5 问题语义协议、Agent 快路径、候选区和 Slot Context Builder |
-| v4.0 | MemoryService、REST/MCP/SDK/ingestion/retrieval/graph/tree/console 的中间件基线 |
+| v4.0 | MemoryService、REST/MCP/SDK/ingestion/retrieval/graph/tree/console 的多产品 runtime 记忆基线 |
 | vNext | 深层优化方案，包含更完整的本地可回放、SlotSnapshot、治理、图谱和记忆树路线 |
 
 发布和变更记录以 [docs/09-changelog](./docs/09-changelog/README.md) 为准。

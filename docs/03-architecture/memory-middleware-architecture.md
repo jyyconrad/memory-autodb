@@ -3,7 +3,8 @@
 > 版本：v4.0 架构方案  
 > 日期：2026-05-30  
 > 状态：设计方案  
-> 目标：将 memory-autodb 从 OpenClaw 插件扩展为可服务多产品的记忆中间件系统
+> 目标：将 memory-autodb 从 OpenClaw 插件扩展为服务多产品 Agent Runtime 的记忆中间件系统
+> 产品定位真源：[product-positioning.md](./product-positioning.md)
 
 ---
 
@@ -14,13 +15,13 @@ memory-autodb 当前已经具备长期记忆插件的核心能力：OpenClaw 工
 调研 `rohitg00/agentmemory` 与 `tinyhumansai/openhuman` 后，新的方向不应只是继续给插件增加表、命令或数据库 Provider，而是把 memory-autodb 抽象成一个独立的记忆中间件：
 
 1. **OpenClaw 变成一个 Adapter**：保留现有工具和生命周期钩子，但内部调用统一的 `MemoryService`。
-2. **提供多入口协议**：REST、MCP、SDK、CLI、Webhook/Hook Adapter 共用同一套核心服务。
+2. **提供多入口协议**：REST、MCP、SDK、CLI、Runtime Hook Adapter 共用同一套核心服务。
 3. **建立标准记忆域模型**：区分 Observation、Memory、Document、Chunk、Entity、Relation、SummaryNode、Namespace、Source、Job、AuditLog。
 4. **从单向量检索升级为混合检索**：BM25/FTS + Vector + Graph + Summary Tree，统一由 Retrieval Orchestrator 合并、去重、重排和裁剪 token。
 5. **引入异步 ingestion/lifecycle**：写入热路径保持快、确定、事务化；嵌入、实体抽取、图谱、摘要、过期清理在后台 job 中执行。
 6. **默认本地优先，可远程部署**：保留 LanceDB 本地能力，补齐服务端认证、租户隔离、审计、备份、导入导出和观测。
 
-关键判断：不要把 v3.0 直接变成 “LanceDB + Mem0 + Cognee 三引擎堆叠”。agentmemory 和 OpenHuman 的共同经验是先稳定**记忆域模型、生命周期、检索编排和协议面**，外部引擎应作为可插拔 Provider，而不是核心架构前提。
+关键判断：不要把 v3.0 直接变成 “LanceDB + Mem0 + Cognee 三引擎堆叠”。agentmemory 和 OpenHuman 可作为外部参考，但当前产品主线是多 OpenClaw 类产品的 Agent Runtime 记忆连续性；外部引擎应作为可插拔 Provider，而不是核心架构前提。
 
 结构化知识图谱需要和记忆树一起设计：Graph 负责实体关系，Tree 负责压缩、导航和时间/来源/主题维度。详细设计见 [结构化知识图谱与记忆树详细设计](../04-design/04.2-detail/structured-knowledge-graph-memory-tree-detail.md)。
 
@@ -30,12 +31,12 @@ memory-autodb 当前已经具备长期记忆插件的核心能力：OpenClaw 工
 
 ### 2.1 agentmemory 的启发
 
-agentmemory 的定位是“多编码智能体共享的记忆服务”，不是单一插件。它的关键设计点：
+agentmemory 的定位更偏开发工具 agent 共享记忆服务，不是 memory-autodb 当前主战场。它的关键设计点仍有参考价值：
 
 | 维度 | 设计 | 对 memory-autodb 的启发 |
 |------|------|--------------------------|
 | 系统形态 | 常驻 server，默认 REST 端口，另有 MCP/Hook/Viewer | memory-autodb 需要 `embedded` 和 `server` 两种运行模式 |
-| 多产品入口 | 支持 Claude Code、Codex、Cursor、OpenClaw、OpenHuman、MCP 客户端 | OpenClaw 不应是核心边界，只是适配器 |
+| 多入口接入 | 支持多类 agent host、OpenClaw、OpenHuman、MCP 客户端 | OpenClaw adapter 是首要入口，但核心应服务多个 OpenClaw 类产品 |
 | 捕获链路 | Hook 捕获 session、prompt、tool use、error、stop/session_end | 把自动捕获抽象成 Observation API 和 Capture Adapter |
 | 记忆层次 | Working、Episodic、Semantic、Procedural 四层 | 当前 `MemoryEntry` 需要升级为生命周期模型 |
 | 检索 | BM25 + Vector + Graph，RRF 融合，可按 agent/project 过滤 | 当前纯向量检索需要 Retrieval Orchestrator |
@@ -57,7 +58,7 @@ OpenHuman 的记忆体系核心是 Memory Tree + Obsidian Wiki，而不是薄向
 | Tree 结构 | source tree、topic tree、global tree | 解决“今天发生什么”“某实体最新情况”“按来源追溯”等非相似度问题 |
 | 后台任务 | 嵌入、实体抽取、seal summary、digest 在 worker 中运行 | 写入热路径不应等待 LLM/embedding |
 | Namespace API | `put_doc`、`put_doc_light`、`ingest_doc`、`query_namespace`、`graph_query` | 需要区分轻量写入、可检索写入、同步完整 ingest |
-| 外部后端 | 可选代理到 agentmemory | memory-autodb 也应定义 backend/provider contract，允许外部记忆后端 |
+| 外部后端 | 可选代理到外部 memory provider | memory-autodb 也应定义 backend/provider contract，允许外部记忆后端 |
 | 自动拉取 | 20 分钟 tick，按 connection 维护 cursor/budget/dedup | 未来 connector/sync 需要 per-source 状态，而不是一次性扫描 |
 
 OpenHuman 的经验说明：长期记忆不能只回答“和 query 相似的片段是什么”，还要回答时间、来源、实体、主题、全局摘要和可人工编辑/导出的可控性。
@@ -109,7 +110,7 @@ OpenHuman 的经验说明：长期记忆不能只回答“和 query 相似的片
                 │                       │                       │
 ┌───────────────▼──────────────┐ ┌──────▼──────────────┐ ┌─────▼─────────────┐
 │      Storage Providers        │ │    Index Providers  │ │   External Backends │
-│ LanceDB | Supabase | Postgres │ │ BM25/FTS | Vector   │ │ agentmemory | Mem0  │
+│ LanceDB | Supabase | Postgres │ │ BM25/FTS | Vector   │ │ Mem0 | Graphiti │
 │ SQLite(local future)          │ │ Graph | SummaryTree │ │ Cognee | custom     │
 └───────────────────────────────┘ └─────────────────────┘ └───────────────────┘
 ```
@@ -121,7 +122,7 @@ OpenHuman 的经验说明：长期记忆不能只回答“和 query 相似的片
 | `embedded` | 和 OpenClaw 插件同进程运行，不启动 HTTP server | 兼容当前插件、最低迁移成本 |
 | `server` | 启动独立 daemon，REST/MCP/CLI/Adapter 访问同一服务 | 多产品共享、本机中间件 |
 | `remote` | 只运行 client adapter，连接远程 memory-autodb server | 团队共享、云端部署 |
-| `backend-proxy` | memory-autodb 代理到 agentmemory/Mem0/Cognee 等外部后端 | 兼容已有记忆系统 |
+| `backend-proxy` | memory-autodb 代理到 Mem0/Cognee/Graphiti 等外部 provider | 兼容已有记忆系统 |
 
 第一阶段必须实现 `embedded` 与 `server` 的同构：OpenClaw 插件使用同一套 `MemoryService`，只是调用方式不同。
 
@@ -317,7 +318,7 @@ Web Console 使用 `/v1/console/*` 只读/运维 API 提供知识速查、整体
 
 ### 5.3 MCP Tool 草案
 
-第一阶段只暴露核心 8 个工具，避免一次性复制 agentmemory 的大型工具面。
+第一阶段只暴露核心 8 个工具，避免一次性复制开发工具记忆系统的大型工具面。
 
 | Tool | 说明 |
 |------|------|
@@ -677,7 +678,7 @@ interface MiddlewareConfig {
     contentStore?: "filesystem" | "none";
   };
   backendProxy?: {
-    type: "agentmemory" | "mem0" | "cognee" | "custom";
+    type: "mem0" | "cognee" | "graphiti" | "custom";
     baseURL?: string;
     apiKey?: string;
   };
@@ -734,7 +735,7 @@ scanner -> ingest.fileSystem
 - Retrieval Orchestrator 并行查询 vector + text + recent。
 - 实现 RRF 融合、去重、score breakdown。
 - 实现 Context Packer，支持 token budget 和 provenance。
-- 建立小型检索评测集，覆盖中文、英文、代码项目、文档知识。
+- 建立小型检索评测集，覆盖中文、英文、跨产品工作场景、文档知识。
 
 ### Phase 4：实体图谱与生命周期
 
@@ -773,7 +774,7 @@ scanner -> ingest.fileSystem
 ### 决策 1：先抽 Core，不先堆外部引擎
 
 - 背景：已有 v3.0 文档倾向 Mem0 + Cognee + LanceDB 三引擎。
-- 决策：先建立 MemoryService、Scope、Ingestion、Retrieval、Lifecycle，再把 Mem0/Cognee/agentmemory 作为 backend/provider。
+- 决策：先建立 MemoryService、Scope、Ingestion、Retrieval、Lifecycle，再把 Mem0/Cognee/Graphiti 等作为 backend/provider。
 - 理由：外部引擎可以替换，但中间件自己的 API、隔离、治理和数据模型必须稳定。
 
 ### 决策 2：OpenClaw Adapter 兼容优先
