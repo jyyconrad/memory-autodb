@@ -39,6 +39,18 @@ export type MemoryConfig = {
     baseURL?: string;
     apiKey: string;
   };
+  /**
+   * LLM chat completion 配置（可选）。
+   * 提供后即可启用摘要 / 抽取等生成式能力；未提供时上层降级到 NullLlmClient。
+   */
+  llm?: {
+    provider: "openai";
+    model: string;
+    baseURL?: string;
+    apiKey: string;
+    maxTokens?: number;
+    temperature?: number;
+  };
   mode?: "embedded" | "server" | "remote" | "backend-proxy";
   server?: {
     enabled?: boolean;
@@ -245,7 +257,7 @@ export const memoryConfigSchema = {
     const cfg = value as Record<string, unknown>;
     assertAllowedKeys(
       cfg,
-      ["embedding", "mode", "server", "features", "dbType", "dbPath", "supabase", "postgres", "scanner", "batchProcessing", "autoCapture", "autoRecall", "recallIncludeDocuments", "captureMaxChars", "tables", "knowledgeBases", "routingRules"],
+      ["embedding", "llm", "mode", "server", "features", "dbType", "dbPath", "supabase", "postgres", "scanner", "batchProcessing", "autoCapture", "autoRecall", "recallIncludeDocuments", "captureMaxChars", "tables", "knowledgeBases", "routingRules"],
       "memory config",
     );
 
@@ -259,6 +271,37 @@ export const memoryConfigSchema = {
     assertAllowedKeys(embedding, ["apiKey", "baseURL", "model"], "embedding config");
 
     const model = resolveEmbeddingModel(embedding);
+
+    // Validate llm config if provided
+    const llm = cfg.llm as Record<string, unknown> | undefined;
+    if (llm) {
+      assertAllowedKeys(
+        llm,
+        ["provider", "model", "baseURL", "apiKey", "maxTokens", "temperature"],
+        "llm config",
+      );
+      if (typeof llm.apiKey !== "string" || !llm.apiKey) {
+        throw new Error("llm.apiKey is required when llm config is provided");
+      }
+      if (typeof llm.model !== "string" || !llm.model) {
+        throw new Error("llm.model is required when llm config is provided");
+      }
+      if (llm.baseURL !== undefined && typeof llm.baseURL !== "string") {
+        throw new Error("llm.baseURL must be a string");
+      }
+      if (
+        llm.maxTokens !== undefined &&
+        (typeof llm.maxTokens !== "number" || !Number.isInteger(llm.maxTokens) || llm.maxTokens < 1)
+      ) {
+        throw new Error("llm.maxTokens must be a positive integer");
+      }
+      if (
+        llm.temperature !== undefined &&
+        (typeof llm.temperature !== "number" || llm.temperature < 0 || llm.temperature > 2)
+      ) {
+        throw new Error("llm.temperature must be between 0 and 2");
+      }
+    }
 
     const mode = typeof cfg.mode === "string" ? cfg.mode : "embedded";
     if (!VALID_MODES.includes(mode as (typeof VALID_MODES)[number])) {
@@ -456,6 +499,14 @@ export const memoryConfigSchema = {
         apiKey: resolveEnvVars(String(embedding.apiKey)),
         baseURL: resolveEnvVars(String(embedding.baseURL)),
       },
+      llm: llm ? {
+        provider: "openai",
+        model: String(llm.model),
+        apiKey: resolveEnvVars(String(llm.apiKey)),
+        baseURL: typeof llm.baseURL === "string" ? resolveEnvVars(llm.baseURL) : undefined,
+        maxTokens: typeof llm.maxTokens === "number" ? llm.maxTokens : undefined,
+        temperature: typeof llm.temperature === "number" ? llm.temperature : undefined,
+      } : undefined,
       mode: mode as MemoryConfig["mode"],
       server: {
         enabled: server?.enabled === true,

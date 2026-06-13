@@ -7,7 +7,9 @@
  */
 
 import { packContext } from "../retrieval/context-packer.js";
-import { normalizeScope } from "./scope.js";
+import { auditLifecycle } from "../lifecycle/audit.js";
+import { normalizeScope, validateScopeForWrite } from "./scope.js";
+import type { AuditRepository } from "../storage/repositories/types.js";
 import type { ContextBlock, RecallHit } from "./types.js";
 import type {
   BuildContextInput,
@@ -40,19 +42,50 @@ export type {
 export interface DefaultMemoryServiceOptions {
   repository: MemoryRepository;
   embeddings: EmbeddingPort;
+  /**
+   * 可选审计仓库。注入后写入/拒绝路径会追加 audit 记录；不传时行为与不审计版本完全一致，
+   * 保持向后兼容。
+   */
+  audit?: AuditRepository;
 }
 
 export class DefaultMemoryService implements MemoryService {
   private readonly repository: MemoryRepository;
   private readonly embeddings: EmbeddingPort;
+  private readonly audit?: AuditRepository;
 
   constructor(options: DefaultMemoryServiceOptions) {
     this.repository = options.repository;
     this.embeddings = options.embeddings;
+    this.audit = options.audit;
   }
 
   async storeMemory(input: StoreMemoryInput): Promise<StoreMemoryResult> {
+    // v0.1 单 appId：record.scope 与 request scope 自洽校验，防止隔离字段缺失或被改动。
+    try {
+      validateScopeForWrite(input.record.scope, input.record.scope);
+    } catch (error) {
+      if (this.audit) {
+        await auditLifecycle(this.audit, {
+          scope: input.record.scope,
+          action: "scope.reject",
+          targetId: input.record.id,
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
+    }
+
     await this.repository.store([input.record]);
+
+    if (this.audit) {
+      await auditLifecycle(this.audit, {
+        scope: input.record.scope,
+        action: "memory.store",
+        targetId: input.record.id,
+      });
+    }
+
     return {
       id: input.record.id,
       stored: true,

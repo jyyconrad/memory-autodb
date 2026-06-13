@@ -16,6 +16,7 @@
 | `ltm cleanup` | 按数据类型、时间或分类清理数据 |
 | `ltm kb:list` | 列出 `knowledge*` 知识库表 |
 | `ltm serve` | 启动本机 REST server 和 `/console` |
+| `ltm mcp` | 启动 stdio MCP server，供 Claude Desktop / Cursor 等客户端接入 |
 | `ltm status` | 输出中间件状态 |
 | `ltm health` | 输出 `MemoryService.health()` JSON |
 | `ltm migrate` | 估算 v4 schema 迁移 |
@@ -184,3 +185,41 @@ ltm migrate --to-schema v4 --dry-run
 ```
 
 当前只支持 `--to-schema v4`。命令根据当前 `service.health().records` 估算迁移计划；它不是实际数据迁移执行器。
+
+## `ltm mcp`
+
+```bash
+ltm mcp
+```
+
+启动 stdio 传输的 MCP server，让本地 MCP 客户端（Claude Desktop、Cursor 等）通过标准输入输出调用长期记忆工具。
+
+工具清单：
+
+| 工具 | 作用 |
+|------|------|
+| `memory_save` | 保存一条记忆 |
+| `memory_recall` | 召回相关记忆 |
+| `memory_context` | 构建 prompt-safe 上下文块 |
+| `memory_observe` | 观察并保存记忆 |
+| `memory_namespaces` | 列出已知 namespace |
+| `memory_forget` | 按 id 或 filter 删除 |
+| `memory_health` | 返回服务健康状态 |
+| `memory_context_fast` | （注入 agent fast-path 时）5 槽位快速上下文 |
+| `memory_observe_light` | （注入 agent fast-path 时）轻量观察入队抽取 |
+| `memory_lookup` | （注入 agent fast-path 时）运行中速查 |
+
+Claude Desktop 配置示例（`claude_desktop_config.json`）：
+
+```json
+{
+  "mcpServers": {
+    "memory-autodb": {
+      "command": "npx",
+      "args": ["openclaw", "ltm", "mcp"]
+    }
+  }
+}
+```
+
+注意：stdio 模式下进程状态信息走 stderr，stdout 专用于 JSON-RPC 流。scope 由客户端在工具入参中传入，本命令层不做鉴权。

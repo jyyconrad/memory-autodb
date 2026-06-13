@@ -43,6 +43,21 @@ import {
   handleBeforeAgentStartRecall,
 } from "./adapters/openclaw/hooks.js";
 import { registerMemoryServerCliCommands } from "./adapters/openclaw/cli.js";
+import { registerProjectCliCommands } from "./adapters/openclaw/cli-project.js";
+import { registerDoctorCliCommands } from "./adapters/openclaw/cli-doctor.js";
+import { registerMcpCliCommands } from "./adapters/openclaw/cli-mcp.js";
+import { createConsoleApi } from "./console/api.js";
+import { InMemoryCandidateRepository } from "./lifecycle/candidate-repository.js";
+import { CandidateReviewService } from "./lifecycle/candidate-review.js";
+import { candidateToMemoryRecord } from "./lifecycle/candidate-promotion.js";
+import { createExtractCandidateHandler } from "./lifecycle/extract-candidate-handler.js";
+import { defaultTypeExtractor } from "./lifecycle/type-extractor.js";
+import { AgentFastPathService } from "./api/agent-fast-path.js";
+import { enqueueUniqueJob } from "./ingest/jobs.js";
+import { extractRecords } from "./adapters/openclaw/agent-service-helper.js";
+import { InMemoryTreeRepository } from "./tree/buffer.js";
+import { createBuildTreeHandler } from "./tree/build-tree-handler.js";
+import { createLlmClient } from "./processing/llm-client.js";
 
 export {
   escapeMemoryForPrompt,
@@ -140,6 +155,80 @@ const memoryPlugin = {
       chunks: ingestionStore.chunks,
       jobs: ingestionStore.jobs,
       audit: ingestionStore.audit,
+    });
+
+    // 候选区：共享单例，供 observe 自动抽取链路与 Console 审核闭环共用同一实例。
+    // approve 通过 promoteCandidate 把候选转换为 active MemoryRecord 写入主库。
+    const candidateRepository = new InMemoryCandidateRepository();
+    const candidateReview = new CandidateReviewService({
+      repository: candidateRepository,
+      promoteCandidate: async ({ candidate }) => {
+        const record = candidateToMemoryRecord(candidate);
+        await memoryService.storeMemory({ record });
+        return { memoryId: record.id };
+      },
+      audit: async ({ scope, action, targetId, metadata }) => {
+        await ingestionStore.audit.append({ scope, action, targetId, metadata });
+      },
+    });
+
+    // Console 聚合 API：把候选区注入，使 serve 启动的 daemon 能提供 Candidates 治理闭环。
+    const consoleApi = createConsoleApi({
+      service: memoryService,
+      candidates: candidateRepository,
+      candidateReview,
+    });
+
+    // F2/F3：LLM 客户端（未配置 llm 时返回 NullLlmClient，树摘要降级 extractive）
+    // 与 in-memory 记忆树仓库（source/topic/global，v0.x 不持久化）。
+    const llmClient = createLlmClient(cfg.llm);
+    const treeRepository = new InMemoryTreeRepository();
+
+    // observe 自动抽取链路：
+    // 1. AgentFastPathService.observeLight 入队 extract_candidate + build_tree job（jobs = ingestionStore.jobs）。
+    // 2. extract_candidate handler 经 extractor 抽取并写入候选区（pending，不污染主库）。
+    // 3. build_tree handler 把 observation 追加到 source 树 buffer，满阈值 seal 成 SummaryNode。
+    // 4. daemon worker loop 轮询 jobs 执行 handler（serve 时启动，见下方 registerMemoryServerCliCommands）。
+    const agentFastPath = new AgentFastPathService({
+      loadRecordsForScope: async (resolvedScope) => {
+        const result = await memoryService.recall({
+          query: "",
+          scope: resolvedScope,
+          limit: 50,
+          minScore: 0,
+        });
+        return extractRecords(result.hits);
+      },
+      recall: async (resolvedScope, query, opts) =>
+        memoryService.recall({
+          query,
+          scope: resolvedScope,
+          limit: opts?.limit ?? 10,
+          minScore: opts?.minScore ?? 0.1,
+        }),
+      enqueueJob: async ({ type, payload }) => {
+        const targetId =
+          typeof payload.traceId === "string" ? payload.traceId : computeContentHash(JSON.stringify(payload));
+        const job = await enqueueUniqueJob(ingestionStore.jobs, { type, targetId, payload });
+        return job.id;
+      },
+      // F3-3：lookup_deep 融合记忆树摘要。
+      loadTreeSummaries: async (resolvedScope) => treeRepository.listSummaries({ scope: resolvedScope }),
+    });
+
+    // extract_candidate job handler：observe → extractor → 候选区（pending）。
+    const extractCandidateHandler = createExtractCandidateHandler({
+      extractor: defaultTypeExtractor,
+      candidates: candidateRepository,
+      audit: async ({ scope, action, targetId, metadata }) => {
+        await ingestionStore.audit.append({ scope, action, targetId, metadata });
+      },
+    });
+
+    // F3：build_tree job handler：observe/ingest → 树 buffer → seal（LLM 可用则 abstractive 摘要）。
+    const buildTreeHandler = createBuildTreeHandler({
+      repository: treeRepository,
+      llmClient,
     });
 
     // 初始化路由引擎（如果启用了多知识库功能）
@@ -325,7 +414,38 @@ const memoryPlugin = {
         registerMemoryServerCliCommands(memory, {
           config: cfg,
           service: memoryService,
+          console: consoleApi,
+          agentFastPath,
+          worker: {
+            jobs: ingestionStore.jobs,
+            leaseMs: 30_000,
+            intervalMs: 1_000,
+            handlers: {
+              extract_candidate: extractCandidateHandler,
+              build_tree: buildTreeHandler,
+            },
+          },
           getTableStats: db.getTableStats ? () => db.getTableStats!() : undefined,
+        });
+
+        // A2-lite: ltm init + project 子命令（project scope identity 与 manifest）
+        registerProjectCliCommands(memory, {
+          service: memoryService,
+          getRecordCount: () => db.count(),
+        });
+
+        // Milestone B: ltm doctor / demo / connect（本机接入体验）
+        registerDoctorCliCommands(memory, {
+          config: cfg,
+          service: memoryService,
+          embeddings,
+        });
+
+        // F1-2: ltm mcp（stdio MCP server，供 Claude Desktop / Cursor 接入）
+        registerMcpCliCommands(memory, {
+          service: memoryService,
+          agentFastPath,
+          namespaces: ["memories", "knowledge"],
         });
 
         memory

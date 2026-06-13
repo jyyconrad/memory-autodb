@@ -187,4 +187,97 @@ describe("SlotContextBuilder", () => {
       expect(cached).toBeNull();
     });
   });
+
+  describe("filtered 收集", () => {
+    it("revoked 记忆进入 filtered，reason=lifecycle_revoked", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        { id: "active-1", kind: "goal", semanticType: "task_context", text: "活跃任务", importance: 0.9, scope: mockScope },
+        { id: "revoked-1", kind: "preference", semanticType: "profile", text: "已撤销", importance: 0.8, lifecycleStatus: "revoked", scope: mockScope },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      const entry = result.filtered?.find((f) => f.recordId === "revoked-1");
+      expect(entry).toBeDefined();
+      expect(entry!.reason).toBe("lifecycle_revoked");
+    });
+
+    it("superseded 记忆进入 filtered，reason=lifecycle_superseded", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        { id: "sup-1", kind: "goal", semanticType: "task_context", text: "旧版本", importance: 0.8, lifecycleStatus: "superseded", scope: mockScope },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      expect(result.filtered?.[0]?.reason).toBe("lifecycle_superseded");
+    });
+
+    it("archived 记忆进入 filtered，reason=lifecycle_archived", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        { id: "arc-1", kind: "goal", semanticType: "task_context", text: "归档", importance: 0.8, lifecycleStatus: "archived", scope: mockScope },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      expect(result.filtered?.[0]?.reason).toBe("lifecycle_archived");
+    });
+
+    it("无 semanticType 的记忆进入 filtered，reason=no_semantic_type", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        { id: "goal-1", kind: "goal", text: "目标", importance: 0.9, scope: mockScope },
+        { id: "fact-1", kind: "fact", text: "无法归类的事实", importance: 0.7, scope: mockScope },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      const entry = result.filtered?.find((f) => f.recordId === "fact-1");
+      expect(entry).toBeDefined();
+      expect(entry!.reason).toBe("no_semantic_type");
+    });
+
+    it("超预算被裁掉的记忆进入 filtered，reason=budget_exceeded", async () => {
+      const manyRecords: Partial<MemoryRecord>[] = Array.from({ length: 10 }, (_, i) => ({
+        id: `mem-${i}`,
+        kind: "goal",
+        semanticType: "task_context",
+        text: `任务内容编号 ${i}`,
+        importance: 0.5,
+        scope: mockScope,
+      }));
+
+      const result = await builder.buildSlotContext(mockScope, manyRecords as MemoryRecord[], {
+        tokenBudgetPerSlot: 30,
+        useCache: false,
+      });
+
+      const budgetFiltered = result.filtered?.filter((f) => f.reason === "budget_exceeded") ?? [];
+      expect(budgetFiltered.length).toBeGreaterThan(0);
+    });
+
+    it("filteredSummary 按 reason 聚合计数", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        { id: "r1", kind: "preference", semanticType: "profile", text: "撤销1", importance: 0.8, lifecycleStatus: "revoked", scope: mockScope },
+        { id: "r2", kind: "preference", semanticType: "profile", text: "撤销2", importance: 0.8, lifecycleStatus: "revoked", scope: mockScope },
+        { id: "f1", kind: "fact", text: "事实", importance: 0.5, scope: mockScope },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      const revokedSummary = result.filteredSummary?.find((s) => s.reason === "lifecycle_revoked");
+      expect(revokedSummary?.count).toBe(2);
+      const noTypeSummary = result.filteredSummary?.find((s) => s.reason === "no_semantic_type");
+      expect(noTypeSummary?.count).toBe(1);
+    });
+
+    it("全部 active 且可归类时 filtered 为空数组", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        { id: "g1", kind: "goal", semanticType: "task_context", text: "任务", importance: 0.9, scope: mockScope },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      expect(result.filtered).toEqual([]);
+      expect(result.filteredSummary).toEqual([]);
+    });
+  });
 });
