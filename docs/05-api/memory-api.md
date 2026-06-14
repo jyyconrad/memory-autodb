@@ -124,7 +124,7 @@
 
 ```json
 {
-  "task": "整理 memory-autodb 文档",
+  "task": "整理 mengshu 文档",
   "tokenBudget": 4000,
   "latencyBudgetMs": 80
 }
@@ -146,7 +146,7 @@
 
 ## REST API
 
-本机 server 由 `ltm serve` 启动，默认监听 `127.0.0.1:3847`。
+本机 server 由 `ms serve` 启动，默认监听 `127.0.0.1:3847`。
 
 安全默认值：
 
@@ -199,7 +199,7 @@ curl http://127.0.0.1:3847/v1/health
       "namespace": "memories"
     },
     "kind": "fact",
-    "text": "memory-autodb 默认使用本机 LanceDB",
+    "text": "mengshu 默认使用本机 LanceDB",
     "contentHash": "hash_1",
     "importance": 0.7,
     "category": "fact",

@@ -7,14 +7,14 @@
 | 文档 | 状态 | 说明 |
 |------|------|------|
 | [memory-api.md](./memory-api.md) | 当前 | OpenClaw 工具、REST `/v1/*`、Agent 快路径和 MCP facade |
-| [cli-commands.md](./cli-commands.md) | 当前 | `ltm` 命令组、参数、输出和注意事项 |
+| [cli-commands.md](./cli-commands.md) | 当前 | `ms` 命令组、参数、输出和注意事项 |
 
 ## 当前入口
 
 | 类型 | 入口 |
 |------|------|
 | OpenClaw 工具 | `memory_store`、`memory_recall`、`memory_forget`、`memory_scan_directory`、`memory_cleanup`、`memory_context_fast` |
-| CLI | `ltm list/stats/tables/search/query/export/scan/cleanup/kb:list/serve/status/health/migrate` |
+| CLI | `ms list/stats/tables/search/query/export/scan/cleanup/kb:list/serve/status/health/migrate` |
 | REST | `/v1/health`、`/v1/memories`、`/v1/recall`、`/v1/context`、`/v1/agent/*`、`/v1/console/*`、`/v1/graph/query` |
 | MCP facade | `memory_save`、`memory_recall`、`memory_context`、`memory_observe`、`memory_namespaces`、`memory_forget`、`memory_health` |
 

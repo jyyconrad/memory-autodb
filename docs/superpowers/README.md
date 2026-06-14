@@ -4,4 +4,4 @@
 
 当前规格：
 
-- [memory-autodb Agent Runtime Context 产品方案与路线图](./specs/2026-06-09-agent-runtime-context-product-roadmap-design.md)
+- [mengshu Agent Runtime Context 产品方案与路线图](./specs/2026-06-09-agent-runtime-context-product-roadmap-design.md)

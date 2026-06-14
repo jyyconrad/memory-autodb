@@ -1,7 +1,7 @@
-# memory-autodb 深层优化架构方案评审报告（v2）
+# mengshu 深层优化架构方案评审报告（v2）
 
 > **评审日期**: 2026-06-08  
-> **评审范围**: [memory-autodb-deep-optimization-architecture.md](./memory-autodb-deep-optimization-architecture.md)  
+> **评审范围**: [mengshu-deep-optimization-architecture.md](./mengshu-deep-optimization-architecture.md)  
 > **评审视角**: 方案可行性、可持续迭代、默认单机配置（LanceDB + 本地 embedding）  
 > **评审性质**: 升级方案架构评审，非代码审查
 
@@ -302,7 +302,7 @@
 
 **现有 [db/providers/lancedb.ts](../../db/providers/lancedb.ts)（565 行）的能力发挥**：
 - LanceDB 原生支持向量 + 元数据混合查询，可以直接做 BM25 + vector 融合
-- 单文件存储（`~/.openclaw/memory/autodb`）天然 portable，符合"本地优先"
+- 单文件存储（`~/.mengshu/lancedb`）天然 portable，符合"本地优先"
 - LanceDB 的 schema 演进能力（add column）适合 5 type 渐进引入
 
 **单机优势**：
@@ -455,17 +455,17 @@
 
 | 拆分 | 内容 | 行数 |
 |---|---|---|
-| `memory-autodb-overview.md` | §1-§5（一句话结论、设计原则、顶层模型、总体架构） | ~400 行 |
-| `memory-autodb-data-model.md` | §6-§7（数据模型、图谱设计） | ~300 行 |
-| `memory-autodb-runtime.md` | §8-§9（记忆树、运行机制、Agent 快路径） | ~400 行 |
-| `memory-autodb-quality.md` | §13-§14（成本性能、可靠性） | ~200 行 |
-| `memory-autodb-roadmap.md` | §18-§22（迭代计划、决策、不做的事） | ~200 行 |
+| `mengshu-overview.md` | §1-§5（一句话结论、设计原则、顶层模型、总体架构） | ~400 行 |
+| `mengshu-data-model.md` | §6-§7（数据模型、图谱设计） | ~300 行 |
+| `mengshu-runtime.md` | §8-§9（记忆树、运行机制、Agent 快路径） | ~400 行 |
+| `mengshu-quality.md` | §13-§14（成本性能、可靠性） | ~200 行 |
+| `mengshu-roadmap.md` | §18-§22（迭代计划、决策、不做的事） | ~200 行 |
 
 **原 22 章合并为 5 个聚焦文档**，每个文档独立可读。
 
 ### 6.2 缺失的关键内容
 
-1. **Anti-pattern 清单**：什么场景不适合用 memory-autodb？例如：纯日志/审计场景、强事务场景、超大文档存储场景
+1. **Anti-pattern 清单**：什么场景不适合用 mengshu？例如：纯日志/审计场景、强事务场景、超大文档存储场景
 2. **从竞品迁移指南**：用户从 Mem0/Letta 迁移过来时，如何映射数据
 3. **debugging 手册**：召回不准时如何排查（slot 命中？BM25 命中？vector 命中？lifecycle 过滤？）
 4. **性能基准方法**：怎么验证 P95 SLO？数据集多大？硬件配置？
@@ -530,5 +530,5 @@
 
 **评审人**: Claude Code  
 **评审版本**: v2  
-**关联文档**: [memory-autodb-deep-optimization-architecture.md](./memory-autodb-deep-optimization-architecture.md)  
+**关联文档**: [mengshu-deep-optimization-architecture.md](./mengshu-deep-optimization-architecture.md)  
 **下一步**: 基于本评审产出修订版方案（建议先做"七、立即可做的 5 个 Quick Win"）

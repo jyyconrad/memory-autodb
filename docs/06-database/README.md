@@ -15,7 +15,7 @@
 | Legacy provider | LanceDB、Supabase、Postgres provider 由 `db/providers/` 实现 |
 | Core service | `storage/legacy-database-adapter.ts` 把 legacy 数据映射到 `MemoryRecord` |
 | Middleware baseline | documents/chunks/jobs/audit/graph/tree 以 in-memory contract baseline 为主 |
-| 持久化迁移 | `ltm migrate --to-schema v4 --dry-run` 当前提供迁移估算 |
+| 持久化迁移 | `ms migrate --to-schema v4 --dry-run` 当前提供迁移估算 |
 
 ## 维护规则
 

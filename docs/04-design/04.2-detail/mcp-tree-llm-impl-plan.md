@@ -1,4 +1,4 @@
-# memory-autodb v0.1+ 增强实施计划：MCP 接入 / 记忆树自动构建 / LLM 客户端
+# mengshu v0.1+ 增强实施计划：MCP 接入 / 记忆树自动构建 / LLM 客户端
 
 > 日期：2026-06-12
 > 状态：已完成（452 测试通过 / tsc 干净 / eval gate PASS）
@@ -63,7 +63,7 @@ F3 (树构建) ──> 实时召回 lookup_deep 查树
 - 新建 `adapters/mcp/stdio-server.ts`：用 `Server` + `StdioServerTransport` 包装现有 `createMcpMemoryServer`，把工具注册表转为 MCP `ListToolsRequestSchema` / `CallToolRequestSchema` handler
 - 扩展 `tools.ts`：增加 agent fast-path 工具（`memory_context_fast` / `memory_observe_light` / `memory_lookup`），注入 AgentFastPathService
 - 每个工具补 JSON Schema `inputSchema`（MCP 协议要求）
-- 新增 CLI `ltm mcp`（adapters/openclaw/cli-mcp.ts）：启动 stdio MCP server
+- 新增 CLI `ms mcp`（adapters/openclaw/cli-mcp.ts）：启动 stdio MCP server
 - 安全：MCP 工具只读 + 受控写，scope 由调用方传入；不暴露内部治理工具
 
 ### 3.3 F2：LLM 配置 + 客户端
@@ -92,7 +92,7 @@ F3 (树构建) ──> 实时召回 lookup_deep 查树
 | F2-1 | LLM config 块 + schema 校验 | pending | - | config.ts, config.middleware.test.ts | config |
 | F2-2 | LlmClient + NullLlmClient + 测试 | pending | F2-1 | processing/llm-client.ts(新) | processing |
 | F1-1 | 安装 MCP SDK + stdio-server + inputSchema | pending | - | adapters/mcp/stdio-server.ts(新), tools.ts, package.json | adapters/mcp |
-| F1-2 | ltm mcp CLI 命令 + index 接线 | pending | F1-1 | adapters/openclaw/cli-mcp.ts(新), index.ts | adapters/openclaw, index |
+| F1-2 | ms mcp CLI 命令 + index 接线 | pending | F1-1 | adapters/openclaw/cli-mcp.ts(新), index.ts | adapters/openclaw, index |
 | F3-1 | build_tree handler + 测试 | pending | F2-2 | tree/build-tree-handler.ts(新) | tree |
 | F3-2 | observe/ingest 触发 build_tree + worker 注册 | pending | F3-1 | index.ts, api/agent-fast-path.ts, ingest/pipeline.ts | index, api, ingest |
 | F3-3 | lookup_deep 查树融合 + 测试 | pending | F3-1 | api/agent-fast-path.ts | api |
@@ -107,7 +107,7 @@ F3 (树构建) ──> 实时召回 lookup_deep 查树
 
 - `npx tsc --noEmit` 通过
 - `npx vitest run` 全绿（不破坏 412）
-- F1：`ltm mcp` 能启动 stdio server，MCP inspector / 手动 JSON-RPC 能 listTools + callTool
+- F1：`ms mcp` 能启动 stdio server，MCP inspector / 手动 JSON-RPC 能 listTools + callTool
 - F2：LlmClient 有 fake 测试；未配置时 NullLlmClient 降级
 - F3：build_tree handler 单测；observe→树 seal 端到端；lookup_deep 返回树摘要
 - eval 两套仍 PASS
@@ -128,7 +128,7 @@ F3 (树构建) ──> 实时召回 lookup_deep 查树
 
 ## 7. 文档同步
 
-- `docs/05-api/` MCP 工具清单 + ltm mcp 用法
+- `docs/05-api/` MCP 工具清单 + ms mcp 用法
 - `docs/06-database/` 树 schema（in-memory 说明）
 - `config.example.json` 加 llm 块示例
 - `docs/09-changelog/` 版本记录

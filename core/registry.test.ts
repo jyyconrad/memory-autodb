@@ -3,7 +3,7 @@
  *
  * 覆盖：emptyRegistry、读不存在的 registry、原子写入、upsertProject 合并与 workspace 倒排维护、
  *      touchProjectOpenedAt 幂等性。
- * 测试用 mkdtemp 隔离的临时目录，禁止触碰真实 `~/.memory-autodb/`。
+ * 测试用 mkdtemp 隔离的临时目录，禁止触碰真实 `~/.mengshu/`。
  */
 
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -25,7 +25,7 @@ import {
 let tmpHome: string;
 
 beforeEach(() => {
-  tmpHome = mkdtempSync(join(tmpdir(), "memory-autodb-registry-"));
+  tmpHome = mkdtempSync(join(tmpdir(), "mengshu-registry-"));
 });
 
 afterEach(() => {
@@ -38,7 +38,7 @@ function opts() {
 
 const baseEntry: RegistryProjectEntry = {
   workspaceId: "ws-abc",
-  displayName: "memory-autodb",
+  displayName: "mengshu",
   manifestPath: "/tmp/manifest.json",
   lastSeenRoot: "/Users/test/project",
   lastOpenedAt: 1_780_000_000_000,
@@ -109,7 +109,7 @@ describe("registry/upsertProject", () => {
       manifestPath: "/tmp/manifest.json",
       // 注意：未传 displayName 和 lastSeenRoot，应保留旧值
     });
-    expect(second.projects["proj-1"].displayName).toBe("memory-autodb");
+    expect(second.projects["proj-1"].displayName).toBe("mengshu");
     expect(second.projects["proj-1"].lastSeenRoot).toBe("/Users/test/project");
   });
 

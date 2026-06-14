@@ -161,18 +161,18 @@ describe("middleware config", () => {
     ).toThrow("llm.temperature must be between 0 and 2");
   });
 
-  test("uses MEMORY_AUTODB_HOME for default dbPath when not specified", () => {
-    const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "memory-autodb-home-"));
-    const previous = process.env.MEMORY_AUTODB_HOME;
-    process.env.MEMORY_AUTODB_HOME = tmpHome;
+  test("uses MENGSHU_HOME for default dbPath when not specified", () => {
+    const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "mengshu-home-"));
+    const previous = process.env.MENGSHU_HOME;
+    process.env.MENGSHU_HOME = tmpHome;
     try {
       const config = memoryConfigSchema.parse(baseConfig);
       expect(config.dbPath).toBe(path.join(tmpHome, "memory", "lancedb"));
     } finally {
       if (previous === undefined) {
-        delete process.env.MEMORY_AUTODB_HOME;
+        delete process.env.MENGSHU_HOME;
       } else {
-        process.env.MEMORY_AUTODB_HOME = previous;
+        process.env.MENGSHU_HOME = previous;
       }
       fs.rmSync(tmpHome, { recursive: true, force: true });
     }

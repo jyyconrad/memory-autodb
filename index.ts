@@ -134,7 +134,7 @@ export function detectCategory(text: string): MemoryCategory {
 // ============================================================================
 
 const memoryPlugin = {
-  id: "memory-autodb",
+  id: "mengshu",
   name: "Memory (AutoDB)",
   description: "Long-term memory with vector search, supporting local LanceDB and cloud Supabase storage, with auto-recall/capture and directory scanning capabilities.",
   kind: "memory" as const,
@@ -237,7 +237,7 @@ const memoryPlugin = {
       ? createRoutingEngine(cfg.routingRules)
       : null;
 
-    api.logger.info(`memory-autodb: plugin registered (dbType: ${cfg.dbType}, lazy init)`);
+    api.logger.info(`mengshu: plugin registered (dbType: ${cfg.dbType}, lazy init)`);
 
     // ========================================================================
     // Tools
@@ -411,7 +411,7 @@ const memoryPlugin = {
 
     api.registerCli(
       ({ program }) => {
-        const memory = program.command("ltm").description("Memory plugin commands");
+        const memory = program.command("ms").description("Memory plugin commands");
         registerMemoryServerCliCommands(memory, {
           config: cfg,
           service: memoryService,
@@ -429,23 +429,23 @@ const memoryPlugin = {
           getTableStats: db.getTableStats ? () => db.getTableStats!() : undefined,
         });
 
-        // A2-lite: ltm init + project 子命令（project scope identity 与 manifest）
+        // A2-lite: ms init + project 子命令（project scope identity 与 manifest）
         registerProjectCliCommands(memory, {
           service: memoryService,
           getRecordCount: () => db.count(),
         });
 
-        // v0.1.2: ltm migrate-home（全局配置目录迁移）
+        // v0.1.2: ms migrate-home（全局配置目录迁移）
         registerMigrateHomeCommand(memory);
 
-        // Milestone B: ltm doctor / demo / connect（本机接入体验）
+        // Milestone B: ms doctor / demo / connect（本机接入体验）
         registerDoctorCliCommands(memory, {
           config: cfg,
           service: memoryService,
           embeddings,
         });
 
-        // F1-2: ltm mcp（stdio MCP server，供 Claude Desktop / Cursor 接入）
+        // F1-2: ms mcp（stdio MCP server，供 Claude Desktop / Cursor 接入）
         registerMcpCliCommands(memory, {
           service: memoryService,
           agentFastPath,
@@ -854,7 +854,7 @@ const memoryPlugin = {
             }
           });
       },
-      { commands: ["ltm"] },
+      { commands: ["ms"] },
     );
 
     // ========================================================================
@@ -893,16 +893,16 @@ const memoryPlugin = {
     // ========================================================================
 
     api.registerService({
-      id: "memory-autodb",
+      id: "mengshu",
       start: async () => {
         await db.initialize();
         api.logger.info(
-          `memory-autodb: initialized (dbType: ${cfg.dbType}, model: ${cfg.embedding.model})`,
+          `mengshu: initialized (dbType: ${cfg.dbType}, model: ${cfg.embedding.model})`,
         );
       },
       stop: async () => {
         await db.close();
-        api.logger.info("memory-autodb: stopped");
+        api.logger.info("mengshu: stopped");
       },
     });
   },

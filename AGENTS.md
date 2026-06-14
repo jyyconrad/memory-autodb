@@ -9,7 +9,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 ### v2.1 核心升级
 
 1. **多表存储架构**：`memories` 表（对话记忆）和 `knowledge` 表（文档知识）分离存储
-2. **增强型 CLI 命令**：新增 `ltm tables`、`ltm query`、`ltm export` 命令
+2. **增强型 CLI 命令**：新增 `ms tables`、`ms query`、`ms export` 命令
 3. **元数据自动丰富**：自动捕获 OpenClaw 上下文（sessionId、conversationId 等）
 4. **配置扩展**：支持表级配置、扫描目标表配置
 
@@ -30,25 +30,25 @@ npx vitest run index.test.ts
 ### CLI 命令
 ```bash
 # 查看统计
-ltm stats
+ms stats
 
 # 列出所有表
-ltm tables
+ms tables
 
 # 搜索记忆
-ltm search "查询内容" --limit 10
+ms search "查询内容" --limit 10
 
 # 高级查询
-ltm query --table memories --filter '{"category": "preference"}'
+ms query --table memories --filter '{"category": "preference"}'
 
 # 导出数据
-ltm export --table knowledge --format json --output knowledge.json
+ms export --table knowledge --format json --output knowledge.json
 
 # 扫描目录
-ltm scan /path/to/docs --target-table knowledge
+ms scan /path/to/docs --target-table knowledge
 
 # 清理数据
-ltm cleanup --older-than 30 --table knowledge
+ms cleanup --older-than 30 --table knowledge
 ```
 
 ## 配置
@@ -64,7 +64,7 @@ ltm cleanup --older-than 30 --table knowledge
     "model": "text-embedding-3-small"
   },
   "dbType": "lancedb",
-  "dbPath": "~/.openclaw/memory/autodb",
+  "dbPath": "~/.mengshu/lancedb",
   "autoCapture": true,
   "autoRecall": true
 }
@@ -75,7 +75,7 @@ ltm cleanup --older-than 30 --table knowledge
 {
   "embedding": { /* ... */ },
   "dbType": "lancedb",
-  "dbPath": "~/.openclaw/memory/autodb",
+  "dbPath": "~/.mengshu/lancedb",
   "supabase": {
     "url": "${SUPABASE_URL}",
     "serviceKey": "${SUPABASE_SERVICE_KEY}"
@@ -99,7 +99,7 @@ ltm cleanup --older-than 30 --table knowledge
   - 插件注册逻辑
   - 核心工具：`memory_recall`、`memory_store`、`memory_scan_directory`、`memory_cleanup`
   - 生命周期钩子：`before_agent_start`（自动召回）、`agent_end`（自动捕获）
-  - CLI 命令注册（`ltm` 命令组）
+  - CLI 命令注册（`ms` 命令组）
   - 安全过滤：prompt 注入检测、内容转义
   - 元数据自动丰富逻辑
 

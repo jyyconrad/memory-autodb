@@ -1,11 +1,11 @@
-# memory-autodb 记忆架构评测方案
+# mengshu 记忆架构评测方案
 
 > 日期：2026-06-09  
 > 状态：设计方案  
-> 适用范围：验证 `memory-autodb` 从 OpenClaw 记忆插件升级为多产品 Agent Runtime 记忆中间件后，是否在跨产品工作记忆连续性、Agent 上下文、安全治理、实时性和成本性能上真实提升。  
+> 适用范围：验证 `mengshu` 从 OpenClaw 记忆插件升级为多产品 Agent Runtime 记忆中间件后，是否在跨产品工作记忆连续性、Agent 上下文、安全治理、实时性和成本性能上真实提升。  
 > 关联文档：
 > - [product-positioning.md](../03-architecture/product-positioning.md)
-> - [memory-autodb-deep-optimization-architecture.md](../03-architecture/memory-autodb-deep-optimization-architecture.md)
+> - [mengshu-deep-optimization-architecture.md](../03-architecture/mengshu-deep-optimization-architecture.md)
 > - [architecture-review-v2.md](../03-architecture/architecture-review-v2.md)
 > - [plugin-test.md](./plugin-test.md)
 
@@ -36,7 +36,7 @@
 | 治理更安全 | private/revoked/stale/conflict 不误注入 | 过期规则覆盖当前规则 |
 | 成本性能可控 | 延迟、token、LLM/embedding 调用次数符合预算 | 质量提升靠无限上下文和无限 LLM 调用 |
 
-核心原则：**外部 benchmark 证明通用能力，内置黄金集证明 memory-autodb 自己的产品语义和中间件契约。**
+核心原则：**外部 benchmark 证明通用能力，内置黄金集证明 mengshu 自己的产品语义和中间件契约。**
 
 ---
 
@@ -73,7 +73,7 @@ local product data
 
 ## 4. 通用开源评测集与工具
 
-这些数据集和工具用于建立行业可比性。它们不是 memory-autodb 的全部成功标准，但必须进入自动化评测矩阵。
+这些数据集和工具用于建立行业可比性。它们不是 mengshu 的全部成功标准，但必须进入自动化评测矩阵。
 
 ### 4.1 推荐开源数据集
 
@@ -87,7 +87,7 @@ local product data
 
 ### 4.2 推荐开源评测工具
 
-| 工具 | 用途 | 在 memory-autodb 中的角色 |
+| 工具 | 用途 | 在 mengshu 中的角色 |
 |------|------|--------------------------|
 | [RAGAS](https://docs.ragas.io/en/latest/concepts/metrics/available_metrics/) | RAG 指标和 synthetic testset generation | 评测 context precision/recall、faithfulness，也用于从本仓文档生成候选评测集 |
 | [DeepEval](https://deepeval.com/docs/getting-started-rag) | RAG 和 multi-turn 评测框架 | 可作为 Python runner，评测 contextual precision/recall、answer relevancy、turn faithfulness |
@@ -95,7 +95,7 @@ local product data
 
 ### 4.3 不把开源 benchmark 当唯一标准
 
-LoCoMo 和 LongMemEval 能证明长期记忆能力，但它们不能完全证明 memory-autodb 的中间件价值。原因：
+LoCoMo 和 LongMemEval 能证明长期记忆能力，但它们不能完全证明 mengshu 的中间件价值。原因：
 
 1. 它们主要评测问答，不直接评测 MCP/REST/SDK 接口契约。
 2. 它们不能覆盖 `private/revoked`、candidate gate、SlotSnapshot freshness、scope 隔离等工程约束。
@@ -124,9 +124,9 @@ open-source benchmark score
 ```text
 eval/
 ├── goldens/
-│   ├── memory-autodb-v0.1.jsonl
-│   ├── memory-autodb-safety.jsonl
-│   ├── memory-autodb-cross-product.jsonl
+│   ├── mengshu-v0.1.jsonl
+│   ├── mengshu-safety.jsonl
+│   ├── mengshu-cross-product.jsonl
 │   └── manifest.json
 ├── adapters/
 │   ├── beir.ts
@@ -145,13 +145,13 @@ eval/
 ```json
 {
   "id": "golden-cross-product-rules-001",
-  "suite": "memory-autodb-v0.1",
+  "suite": "mengshu-v0.1",
   "task": "用户从 Claw 研究助手切换到 Claw 项目助手后，继续整理同一项目的交付计划",
   "scope": {
     "tenantId": "local",
     "appId": "claw-project",
     "userId": "default",
-    "projectId": "memory-autodb",
+    "projectId": "mengshu",
     "namespace": "memories"
   },
   "seedMemories": [
@@ -163,7 +163,7 @@ eval/
       "evidence": ["docs/03-architecture/product-positioning.md"]
     }
   ],
-  "query": "现在要继续整理 memory-autodb 的交付计划，输出风格需要注意什么？",
+  "query": "现在要继续整理 mengshu 的交付计划，输出风格需要注意什么？",
   "expected": {
     "requiredMemoryIds": ["m1"],
     "forbiddenMemoryIds": [],
@@ -181,10 +181,10 @@ v0.1 不需要一开始做大。建议首批固定 80-120 条：
 
 | 套件 | 数量 | 覆盖 |
 |------|------|------|
-| `memory-autodb-v0.1` | 40 | Agent context、lookup、SlotSnapshot、fallback |
-| `memory-autodb-safety` | 25 | private、revoked、stale、conflict、prompt injection |
-| `memory-autodb-cross-product` | 25 | 多 Claw 产品切换、偏好持续、工作背景持续、scope、MCP/REST |
-| `memory-autodb-negative` | 10 | 不该记、不该答、应 abstain 的场景 |
+| `mengshu-v0.1` | 40 | Agent context、lookup、SlotSnapshot、fallback |
+| `mengshu-safety` | 25 | private、revoked、stale、conflict、prompt injection |
+| `mengshu-cross-product` | 25 | 多 Claw 产品切换、偏好持续、工作背景持续、scope、MCP/REST |
+| `mengshu-negative` | 10 | 不该记、不该答、应 abstain 的场景 |
 
 v0.2 后扩展到 200-300 条，并加入 candidate gate、批量审核、自动淘汰和 Console explainability。
 
@@ -243,7 +243,7 @@ repo docs / API docs / architecture docs
   -> convert to memory-eval schema
 ```
 
-生成后的 case 只能进入 `draft`，不能直接进入 `golden`。原因是 RAGAS 生成的是 RAG 问答样例，不天然理解 memory-autodb 的 `scope`、`kind`、`semanticType`、candidate gate 和安全过滤规则。
+生成后的 case 只能进入 `draft`，不能直接进入 `golden`。原因是 RAGAS 生成的是 RAG 问答样例，不天然理解 mengshu 的 `scope`、`kind`、`semanticType`、candidate gate 和安全过滤规则。
 
 ---
 
@@ -254,11 +254,11 @@ repo docs / API docs / architecture docs
 建议新增命令：
 
 ```bash
-ltm eval prepare --source docs --out eval/goldens/draft.jsonl
-ltm eval run --suite eval/goldens/memory-autodb-v0.1.jsonl --target baseline-v4
-ltm eval run --suite eval/goldens/memory-autodb-v0.1.jsonl --target vnext
-ltm eval compare --base results/baseline-v4.json --candidate results/vnext.json
-ltm eval report --run results/2026-06-09-vnext --format markdown,json,html
+ms eval prepare --source docs --out eval/goldens/draft.jsonl
+ms eval run --suite eval/goldens/mengshu-v0.1.jsonl --target baseline-v4
+ms eval run --suite eval/goldens/mengshu-v0.1.jsonl --target vnext
+ms eval compare --base results/baseline-v4.json --candidate results/vnext.json
+ms eval report --run results/2026-06-09-vnext --format markdown,json,html
 ```
 
 也可以先以独立脚本落地：
@@ -361,7 +361,7 @@ eval/results/2026-06-09T120000-vnext/
 
 | Target | 说明 |
 |--------|------|
-| `baseline-v4` | 当前 memory-autodb 能力 |
+| `baseline-v4` | 当前 mengshu 能力 |
 | `vnext-fast` | 只启用 Agent fast path 和 SlotSnapshot |
 | `vnext-full` | 启用候选区、治理、graph/tree 可用部分 |
 
@@ -388,8 +388,8 @@ eval/results/2026-06-09T120000-vnext/
 
 v0.1 必须满足：
 
-1. 本地黄金集 `memory-autodb-v0.1` 的 required memory recall 高于 `baseline-v4`。
-2. `memory-autodb-safety` 中 private/revoked 误注入为 0。
+1. 本地黄金集 `mengshu-v0.1` 的 required memory recall 高于 `baseline-v4`。
+2. `mengshu-safety` 中 private/revoked 误注入为 0。
 3. 无 `semanticType` 的 fallback 记忆仍可通过 `memory_lookup` 命中。
 4. `memory_context_fast` 本地 P95 小于 80ms。
 5. `memory_lookup` 本地 P95 小于 100ms。
@@ -426,7 +426,7 @@ v0.2 增加：
 交付：
 
 1. `eval/goldens/` 目录和 JSONL schema。
-2. `memory-autodb-v0.1` 首批 80-120 条黄金集。
+2. `mengshu-v0.1` 首批 80-120 条黄金集。
 3. `baseline-v4` 和 `vnext` runner contract。
 4. `compare` 报告生成器。
 
@@ -454,7 +454,7 @@ v0.2 增加：
 
 交付：
 
-1. `ltm eval prepare`。
+1. `ms eval prepare`。
 2. 从 docs/API/changelog 生成 draft cases。
 3. evidence 校验、去重、难度分层、suite balancing。
 4. `manifest.json` 记录生成模型、prompt、source hash、审批状态。
@@ -468,8 +468,8 @@ v0.2 增加：
 
 交付：
 
-1. `ltm eval run --quick`：本地开发快速评测。
-2. `ltm eval run --full`：发布前完整评测。
+1. `ms eval run --quick`：本地开发快速评测。
+2. `ms eval run --full`：发布前完整评测。
 3. GitHub Actions 或本地 CI 配置。
 4. 失败样例自动汇总。
 

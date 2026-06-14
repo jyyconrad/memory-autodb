@@ -14,7 +14,7 @@
  *
  * 核心流程（CLI）：
  *   tsx eval/runners/quick-eval.ts <suite> [--out <dir>]
- *   suite: 黄金集名（默认 memory-autodb-v0.1）
+ *   suite: 黄金集名（默认 mengshu-v0.1）
  *
  * 关键边界：
  *   - 不调任何 LLM、不连任何向量库；输入只看 seedMemories 和 expected。
@@ -173,7 +173,7 @@ function formatPercent(value: number): string {
 /** 把一个 suite 的报告渲染成 markdown 文本。 */
 export function renderReport(report: EvalReport): string {
   const lines: string[] = [];
-  lines.push(`# memory-autodb 评测报告`);
+  lines.push(`# mengshu 评测报告`);
   lines.push("");
   lines.push(`- 生成时间：${report.generatedAt}`);
   lines.push(`- 总 case 数：${report.totalCases}`);
@@ -266,7 +266,7 @@ async function main(argv: string[]): Promise<void> {
   const resultsDir = path.resolve(__dirname, "../results");
 
   const args = argv.slice(2);
-  const suiteName = args[0] ?? "memory-autodb-v0.1";
+  const suiteName = args[0] ?? "mengshu-v0.1";
 
   // 简易参数解析
   let outDir = path.join(resultsDir, timestampDir());
@@ -281,7 +281,7 @@ async function main(argv: string[]): Promise<void> {
   // 跑单 suite，但若用户传 "all"，就把全部 jsonl 都跑
   const summaries: SuiteSummary[] = [];
   if (suiteName === "all") {
-    const allFiles = ["memory-autodb-v0.1", "memory-autodb-safety"];
+    const allFiles = ["mengshu-v0.1", "mengshu-safety"];
     for (const name of allFiles) {
       const file = path.join(goldensDir, `${name}.jsonl`);
       const { summary } = await runSuite(file);

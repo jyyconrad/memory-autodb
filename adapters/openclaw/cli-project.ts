@@ -1,9 +1,9 @@
 /**
- * OpenClaw `ltm init` 与 `ltm project` 子命令（A2-lite）。
+ * OpenClaw `ms init` 与 `ms project` 子命令（A2-lite）。
  *
  * 本文件做什么：在 cli.ts 的 server 命令之外，注册 project scope identity 入口：
- * - `ltm init [dir]`：创建 .memory-autodb.json（默认幂等不覆盖，--force 覆盖）。
- * - `ltm project status/context/lookup`：基于 manifest 派生 scope 的最小可用视图。
+ * - `ms init [dir]`：创建 .mengshu.json（默认幂等不覆盖，--force 覆盖）。
+ * - `ms project status/context/lookup`：基于 manifest 派生 scope 的最小可用视图。
  *
  * 核心流程：
  * 1. 解析目标目录（位置参数 > --dir > cwd）。
@@ -137,7 +137,7 @@ async function handleStatus(positional: unknown, options: DirOptions, deps: Proj
   const dir = resolveDir(positional, options, deps);
   const manifest = readProjectManifest(dir, deps.homePathOptions);
   if (!manifest) {
-    console.log(`未找到 ${MANIFEST_FILENAME}，请先运行 \`ltm init\`。`);
+    console.log(`未找到 ${MANIFEST_FILENAME}，请先运行 \`ms init\`。`);
     return;
   }
 
@@ -164,7 +164,7 @@ async function handleContext(
   const dir = resolveDir(positional, options, deps);
   const manifest = readProjectManifest(dir, deps.homePathOptions);
   if (!manifest) {
-    console.log(`未找到 ${MANIFEST_FILENAME}，请先运行 \`ltm init\`。`);
+    console.log(`未找到 ${MANIFEST_FILENAME}，请先运行 \`ms init\`。`);
     return;
   }
 
@@ -200,7 +200,7 @@ async function handleLookup(query: unknown, options: DirOptions, deps: ProjectCl
   const dir = resolveDir(undefined, options, deps);
   const manifest = readProjectManifest(dir, deps.homePathOptions);
   if (!manifest) {
-    console.log(`未找到 ${MANIFEST_FILENAME}，请先运行 \`ltm init\`。`);
+    console.log(`未找到 ${MANIFEST_FILENAME}，请先运行 \`ms init\`。`);
     return;
   }
   if (!deps.service) {
@@ -228,11 +228,11 @@ async function handleLookup(query: unknown, options: DirOptions, deps: ProjectCl
   }
 }
 
-/** 注册 init 与 project 子命令到父 `ltm` 命令。 */
+/** 注册 init 与 project 子命令到父 `ms` 命令。 */
 export function registerProjectCliCommands(memory: CommanderLike, deps: ProjectCliDeps): void {
   memory
     .command("init [dir]")
-    .description("Initialize project memory workspace (.memory-autodb.json)")
+    .description("Initialize project memory workspace (.mengshu.json)")
     .option("--workspace-id <id>", "Explicit workspace id")
     .option("--project-id <id>", "Explicit project id")
     .option("--user-id <id>", "User id for scope")

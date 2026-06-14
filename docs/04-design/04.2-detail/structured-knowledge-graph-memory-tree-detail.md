@@ -9,7 +9,7 @@
 
 ## 1. 设计目标
 
-memory-autodb 的“结构化知识图谱”不应只是一组 `entities` / `relations` 表。参考 OpenHuman Memory Tree 后，更合适的设计是：
+mengshu 的“结构化知识图谱”不应只是一组 `entities` / `relations` 表。参考 OpenHuman Memory Tree 后，更合适的设计是：
 
 1. **底层是可追溯的内容叶子**：所有事实、实体、关系和摘要都能追溯到 source、document、chunk、observation。
 2. **中层是结构化实体图谱**：用 Entity / Relation 表表达“谁和谁有什么关系”，关系必须带 evidence。
@@ -437,7 +437,7 @@ raw mention
 |-----|------|-----------|
 | `src/index.ts` | file | `/abs/project/src/index.ts` |
 | `OpenClaw` | project/tool | `openclaw` |
-| `memory-autodb` | project | `memory-autodb` |
+| `mengshu` | project | `mengshu` |
 | `Postgres` / `PostgreSQL` | concept | `postgresql` |
 
 ### 6.3 Relation 校验
@@ -740,7 +740,7 @@ metadata = { scopeKey, sourceId, entityIds, lifecycle, createdAt }
 
 ---
 
-## 10. 与现有 memory-autodb 的集成
+## 10. 与现有 mengshu 的集成
 
 ### 10.1 与 `memory_scan_directory`
 

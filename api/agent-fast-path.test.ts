@@ -17,7 +17,7 @@ const baseScope: MemoryScope = {
   tenantId: "local",
   appId: "openclaw",
   userId: "user-1",
-  projectId: "memory-autodb",
+  projectId: "mengshu",
   agentId: "agent-1",
   namespace: "memories",
 };
@@ -52,7 +52,7 @@ describe("AgentFastPathService", () => {
         id: "goal-1",
         kind: "goal",
         semanticType: "task_context",
-        text: "完成 memory-autodb 架构升级",
+        text: "完成 mengshu 架构升级",
         importance: 0.95,
       }),
       makeRecord({
@@ -143,7 +143,7 @@ describe("AgentFastPathService", () => {
     it("返回任务 hints（rules + experience）", async () => {
       const response = await service.context({
         scope: baseScope,
-        task: "完成 memory-autodb 架构升级",
+        task: "完成 mengshu 架构升级",
       });
 
       expect(response.taskHints).toBeDefined();

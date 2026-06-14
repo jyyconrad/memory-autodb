@@ -30,8 +30,8 @@ npx vitest run config.middleware.test.ts api/rest/auth.test.ts api/rest/router.t
 
 - 入口与使用说明：[../../eval/README.md](../../eval/README.md)
 - 黄金集：
-  - `eval/goldens/memory-autodb-v0.1.jsonl`（30 条，覆盖 profile / rules / experience 跨 project 复用，task_context / resource project 隔离，lookup-only）
-  - `eval/goldens/memory-autodb-safety.jsonl`（40 条，覆盖 private 隔离、revoked / archived 拦截、5 类敏感属性、prompt 注入转义、forbidden ids）
+  - `eval/goldens/mengshu-v0.1.jsonl`（30 条，覆盖 profile / rules / experience 跨 project 复用，task_context / resource project 隔离，lookup-only）
+  - `eval/goldens/mengshu-safety.jsonl`（40 条，覆盖 private 隔离、revoked / archived 拦截、5 类敏感属性、prompt 注入转义、forbidden ids）
   - `eval/goldens/manifest.json`（size + sha256 + 覆盖摘要）
 - runner：
   - 命令行：`npm run eval:quick -- <suite>`，输出 `eval/results/<timestamp>/report.md`

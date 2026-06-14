@@ -1,8 +1,8 @@
 {
-  "name": "@openclaw/memory-autodb",
+  "name": "@mengshu/core",
   "version": "2026.3.9",
   "private": true,
-  "description": "Local-first memory middleware for OpenClaw-type Agent Runtime products with auto-recall/capture",
+  "description": "Local-first memory middleware (mengshu) for OpenClaw-type Agent Runtime products with auto-recall/capture",
   "type": "module",
   "dependencies": {
     "@lancedb/lancedb": "^0.26.2",

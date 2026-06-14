@@ -17,7 +17,7 @@
 **三个重大缺口**：
 1. **数据层 scope 隔离缺口**：LanceDB 查询不过滤 scope 字段（当前全量向量搜索），Owner/Working Context Scope 分离方案需要改仓储查询接口 + 数据模型 + cache 策略，工程量**大**。
 2. **可评测指标无数据基础**：成功标准 #6"重复解释减少率 ≥ 30% + 采纳率 ≥ 70%"无任何采集 pipeline，无对应 Milestone 交付项，6 周内**无法证伪**。
-3. **跨产品 demo 零起步**：`ltm project`、`.memory-autodb.json` 解析器、第二 appId adapter 全不存在，Milestone A2 承诺的"两个 appId 复用 demo"需从零实现 6 个新模块。
+3. **跨产品 demo 零起步**：`ms project`、`.mengshu.json` 解析器、第二 appId adapter 全不存在，Milestone A2 承诺的"两个 appId 复用 demo"需从零实现 6 个新模块。
 
 **推荐**：里程碑重排为 **A0（文档+黄金集）→ A1-lite（单 appId Working Context，去掉跨 appId）→ B（接入体验）→ A2-deferred（跨 appId 作为独立迭代）**，把 6 周承诺缩小到单 appId 可验证闭环，跨产品能力延后。
 
@@ -68,7 +68,7 @@
 | 仓储查询 scope filter | 支持 partial filter | **LanceDB 不过滤 scope 字段**，全量向量搜索 | **重大缺口** |
 | `loadRecordsForScope` 接口 | 单 scope 加载 | 是，无 partial/聚合支持 | 需改公共接口 |
 | Working Context Scope 新模块 | "新增" | `WorkingContextResolver`/`ScopePolicy` **完全不存在** | 需从零实现 |
-| `.memory-autodb.json` 解析 | "新建" | 无文件格式、无解析器、无 lookup 链路 | 需从零实现 |
+| `.mengshu.json` 解析 | "新建" | 无文件格式、无解析器、无 lookup 链路 | 需从零实现 |
 | `adapters/openclaw/scope.ts` | 推导 workspaceId | 硬编码 `appId: "openclaw"`，不读 manifest | 需改造 |
 | SlotSnapshot cache key | "小改动" | 以完整 scope 为 key，跨 appId 聚合后语义变 | 需改 cache 策略 |
 
@@ -88,7 +88,7 @@
 | 新建 `ScopePolicy` 模块 | 大 | 复用规则引擎 + Filter 模式 + opt-in 逻辑 |
 | LanceDB 查询增加 scope filter | 大 | 改 `queryFromTable()` 签名 + 数据模型（metadata 序列化 workspaceId/projectId）+ 索引 |
 | `AgentFastPathDeps.loadRecordsForScope` 改造 | 大 | 拆分或重载接口，支持跨 appId 聚合 |
-| `.memory-autodb.json` 文件格式 + 解析器 | 中 | 新增 schema + 解析逻辑 + lookup 链路 |
+| `.mengshu.json` 文件格式 + 解析器 | 中 | 新增 schema + 解析逻辑 + lookup 链路 |
 | `adapters/openclaw/scope.ts` 改造 | 中 | 新增 manifest 读取 + workspaceId 推导 |
 | SlotSnapshot cache key 策略改动 | 中 | 跨 appId 聚合后 cache key 语义变，需重新设计 |
 
@@ -170,8 +170,8 @@ plan.md §6 Milestone A1 验收第 5 条 + A2 验收第 8 条：
 
 | 所需组件 | 代码现状 | 缺口 |
 |----------|---------|------|
-| `ltm project` 命令族 | CLI 无 `project` 子命令 | 需新增：init/index/status/refresh/context/lookup 6 个子命令 |
-| `.memory-autodb.json` 解析器 | 无 | 需新建：schema + 解析 + lookup 链路 |
+| `ms project` 命令族 | CLI 无 `project` 子命令 | 需新增：init/index/status/refresh/context/lookup 6 个子命令 |
+| `.mengshu.json` 解析器 | 无 | 需新建：schema + 解析 + lookup 链路 |
 | Project manifest 全局库 | `~/.openclaw/memory/projects/<project-id>/manifest.json` 不存在 | 需新建：路径约定 + manifest 写入/读取 |
 | 第二个 appId adapter | 只有 `adapters/openclaw/` | 需新建：`adapters/claw-research/` 或简化为 config 文件 |
 | WorkspaceId 推导逻辑 | `adapters/openclaw/scope.ts` 硬编码 `appId: "openclaw"` | 需改造：从 manifest 读取或从 CLI 参数传入 |
@@ -180,13 +180,13 @@ plan.md §6 Milestone A1 验收第 5 条 + A2 验收第 8 条：
 **工程量详细**：
 
 ```
-ltm project init (新建)
-  -> 创建 .memory-autodb.json + 生成 projectId + 推导 workspaceId
+ms project init (新建)
+  -> 创建 .mengshu.json + 生成 projectId + 推导 workspaceId
   -> 写入全局 manifest ~/.openclaw/memory/projects/<project-id>/manifest.json
   -> 注册 source roots
 
-ltm project context --app-id claw-research (新建)
-  -> 读取 .memory-autodb.json
+ms project context --app-id claw-research (新建)
+  -> 读取 .mengshu.json
   -> 查找 manifest
   -> 推导 workspaceId/projectId
   -> 调用 AgentFastPathService.context({ appId: 'claw-research', workspaceId, projectId })
@@ -245,7 +245,7 @@ plan §6 承诺 6 周完成 A0+A1+A2 三个里程碑。
 |-----------|------|------|--------|
 | A0 | 五流程文档 + 黄金集（30+30+40） + ADR | 文档完整 + 黄金集可跑 | 1 周 |
 | A1 | scope policy + filtered 字段 + warning 枚举 + 跨 appId demo | 两 appId 复用 + P95 < 250ms + 召回 ≥ 80% | 2-3 周 |
-| A2 | Project Workspace + 多 source root + scanner 改造 | ltm init 可用 + 文件移动记忆不重建 | 2-3 周 |
+| A2 | Project Workspace + 多 source root + scanner 改造 | ms init 可用 + 文件移动记忆不重建 | 2-3 周 |
 
 合计：1 + 3 + 3 = 7 周（已超 6 周承诺），且假设无阻塞、无返工。
 
@@ -255,7 +255,7 @@ plan §6 承诺 6 周完成 A0+A1+A2 三个里程碑。
 |-----------|---------|-----------|---------|
 | A0 | 黄金集标注（100 条，每条含 adoption/repetition） | 黄金集 3-5 天/人（需专家） | 1-1.5 周 |
 | A1 | WorkingContextResolver + ScopePolicy + LanceDB scope filter + loadRecordsForScope 接口改造 + cache 策略 | **5 大改动**（见 §2.3） | **4-5 周**（重度改造） |
-| A2 | ltm project 命令族 + .memory-autodb.json 解析 + manifest 全局库 + 第二 appId adapter + scanner 改造 | **6 个新模块**（见 §4.2） | **3-4 周** |
+| A2 | ms project 命令族 + .mengshu.json 解析 + manifest 全局库 + 第二 appId adapter + scanner 改造 | **6 个新模块**（见 §4.2） | **3-4 周** |
 
 合计：1.5 + 5 + 4 = **10.5 周**（最乐观），实际可能 12-14 周（含测试 + 返工）。
 
@@ -269,7 +269,7 @@ A0（文档） -> A1-WorkingContextResolver（大）
                        -> A1-LanceDB filter（大）
                            -> A1-loadRecordsForScope 改造（大，公共接口）
                                -> A1-跨 appId demo（依赖前 4 项全完成）
-                                   -> A2-ltm project（6 个新模块）
+                                   -> A2-ms project（6 个新模块）
                                        -> A2-第二 appId adapter
                                            -> A2-跨 appId 验收
 ```
@@ -364,7 +364,7 @@ positioning §5.1 定义三个可证明的效果提升点（相对竞品）：
 **延后到 v0.2**（8-10 周独立迭代）：
 - Working Context Scope 分离（WorkingContextResolver + ScopePolicy + LanceDB filter）
 - 跨 appId demo（第二 appId adapter + 跨产品黄金集 30 条）
-- Project Memory Workspace 完整版（ltm project 命令族 + manifest 全局库）
+- Project Memory Workspace 完整版（ms project 命令族 + manifest 全局库）
 
 ### 9.2 成功标准修正
 
@@ -388,7 +388,7 @@ positioning §5.1 定义三个可证明的效果提升点（相对竞品）：
 | 原 P0 | 修正后（v0.1 范围） |
 |-------|---------------------|
 | P0-1 Working Context 语义层 + 跨 appId 复用 | **保留前半**：单 appId 的 workspace/project scope；**延后后半**：跨 appId 复用到 v0.2 |
-| P0-2 Project Memory Workspace | **简化**：ltm init 只创建 scope，不强制目录索引；完整版延后到 v0.2 |
+| P0-2 Project Memory Workspace | **简化**：ms init 只创建 scope，不强制目录索引；完整版延后到 v0.2 |
 | P0-3~P0-7（doctor/Console/黄金集） | **保留**但范围缩小：去掉跨 appId 相关验收项 |
 
 **新版 6 周交付承诺**（可落地）：
@@ -396,7 +396,7 @@ positioning §5.1 定义三个可证明的效果提升点（相对竞品）：
 2. 黄金集 v0.1（30 条）+ safety（40 条）
 3. `context_fast` 输出对齐（OpenClaw + REST + SDK）
 4. Console 最小可用（Quick Lookup + candidate 列表）
-5. ltm demo/connect/status（单 appId 验证）
+5. ms demo/connect/status（单 appId 验证）
 
 ---
 
@@ -416,7 +416,7 @@ positioning §5.1 定义三个可证明的效果提升点（相对竞品）：
 | 问题 | 现状 | 影响 |
 |------|------|------|
 | Owner Scope provenance 如何持久化 | 文档说"保留 appId/agentId/sessionId"，但 MemoryRecord schema 未扩展 | audit/冲突解释/evidence drill-down 无法追溯到写入方 |
-| workspaceId 如何推导（无 manifest 时） | 文档说"从 manifest 读取或 CLI 参数"，但冷启动场景未定义 | 用户首次 `ltm init` 前的记忆归属哪个 workspace？ |
+| workspaceId 如何推导（无 manifest 时） | 文档说"从 manifest 读取或 CLI 参数"，但冷启动场景未定义 | 用户首次 `ms init` 前的记忆归属哪个 workspace？ |
 | 跨 workspace 的 profile/rules 冲突 | 文档说"conflict candidate 进治理"，但冲突判定逻辑未定义 | 两个 workspace 的 profile 矛盾时如何决议？ |
 | HeuristicTypeExtractor 人格标签黑名单 | 当前无，safety case "人格标签不生成"靠"碰巧不匹配" | 无法保证不误写入敏感属性 |
 

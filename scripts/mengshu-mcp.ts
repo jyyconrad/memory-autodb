@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Standalone MCP stdio entry for memory-autodb.
+ * Standalone MCP stdio entry for mengshu.
  *
  * 用途：让 Codex、Claude Code、Claude Desktop 等本地 MCP 客户端绕过 OpenClaw CLI
- * 的插件加载链路，直接启动当前仓库里的 memory-autodb 工具表。
+ * 的插件加载链路，直接启动当前仓库里的 mengshu 工具表。
  *
- * v0.1.2 起默认从全局目录 `~/.memory-autodb/` 读取 config.json 与 .env，
- * 旧路径 `~/.openclaw/memory-autodb-mcp.json`、`~/.openclaw/.env`、
+ * v0.1.2 起默认从全局目录 `~/.mengshu/` 读取 config.json 与 .env，
+ * 旧路径 `~/.openclaw/mengshu-mcp.json`、`~/.openclaw/.env`、
  * `~/.openclaw/conf/plugins.json` 仅作为兼容回退（命中时会写 stderr 提示迁移）。
  *
  * 注意：stdio MCP 的 stdout 只能输出 JSON-RPC，诊断信息必须写 stderr。
@@ -39,7 +39,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /** 旧版插件配置位置（仅用于兼容回退）。 */
-const LEGACY_MCP_CONFIG_PATH = path.join(resolveLegacyHomeDir(), "memory-autodb-mcp.json");
+const LEGACY_MCP_CONFIG_PATH = path.join(resolveLegacyHomeDir(), "mengshu-mcp.json");
 /** OpenClaw 插件 manifest 配置（保留作为最后兜底）。 */
 const DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH = path.join(resolveLegacyHomeDir(), "conf", "plugins.json");
 /** 旧版 .env（仅用于兼容回退）。 */
@@ -105,35 +105,35 @@ function readConfig(configPath: string): unknown {
     return readJson(configPath);
   }
 
-  // 兼容回退 1：旧 ~/.openclaw/memory-autodb-mcp.json
+  // 兼容回退 1：旧 ~/.openclaw/mengshu-mcp.json
   if (fs.existsSync(LEGACY_MCP_CONFIG_PATH)) {
     process.stderr.write(
-      `[memory-autodb] 检测到旧配置 ${LEGACY_MCP_CONFIG_PATH}，建议迁移到 ${configPath}\n`,
+      `[mengshu] 检测到旧配置 ${LEGACY_MCP_CONFIG_PATH}，建议迁移到 ${configPath}\n`,
     );
     return readJson(LEGACY_MCP_CONFIG_PATH);
   }
 
-  // 兼容回退 2：~/.openclaw/conf/plugins.json 中的 memory-autodb 条目
+  // 兼容回退 2：~/.openclaw/conf/plugins.json 中的 mengshu 条目
   if (fs.existsSync(DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH)) {
     const plugins = readJson(DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH) as {
       entries?: Record<string, { enabled?: boolean; config?: unknown }>;
     };
-    const entry = plugins.entries?.["memory-autodb"];
+    const entry = plugins.entries?.["mengshu"];
     if (!entry?.enabled || !entry.config) {
       throw new Error(
-        `memory-autodb plugin config is disabled or missing: ${DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH}`,
+        `mengshu plugin config is disabled or missing: ${DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH}`,
       );
     }
     return entry.config;
   }
 
   throw new Error(
-    `memory-autodb config not found. Tried: ${configPath}, ${LEGACY_MCP_CONFIG_PATH}, ${DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH}`,
+    `mengshu config not found. Tried: ${configPath}, ${LEGACY_MCP_CONFIG_PATH}, ${DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH}`,
   );
 }
 
 function resolveDbPath(cfg: MemoryConfig, configPath: string): string {
-  const dbPath = cfg.dbPath ?? "~/.memory-autodb/memory/lancedb";
+  const dbPath = cfg.dbPath ?? "~/.mengshu/memory/lancedb";
   const configDir = path.dirname(configPath);
   return resolveMaybeRelative(dbPath, configDir);
 }
@@ -319,32 +319,32 @@ async function main(): Promise<void> {
 
   ensureLocalNoProxy();
 
-  // 解析 .env 路径：显式 env > 新全局 ~/.memory-autodb/.env > 旧 ~/.openclaw/.env（带兼容警告）。
-  const explicitEnv = process.env.MEMORY_AUTODB_ENV;
+  // 解析 .env 路径：显式 env > 新全局 ~/.mengshu/.env > 旧 ~/.openclaw/.env（带兼容警告）。
+  const explicitEnv = process.env.MENGSHU_ENV;
   const envPath = explicitEnv ? expandHome(explicitEnv) : resolveEnvPath();
   if (fs.existsSync(envPath)) {
     loadDotEnv(envPath);
   } else if (!explicitEnv && fs.existsSync(LEGACY_ENV_PATH)) {
     process.stderr.write(
-      `[memory-autodb] 检测到旧 env 文件 ${LEGACY_ENV_PATH}，建议迁移到 ${envPath}\n`,
+      `[mengshu] 检测到旧 env 文件 ${LEGACY_ENV_PATH}，建议迁移到 ${envPath}\n`,
     );
     loadDotEnv(LEGACY_ENV_PATH);
   }
   ensureLocalNoProxy();
 
-  // 解析 config 路径：显式 env > 新全局 ~/.memory-autodb/config.json。
-  const explicitConfig = process.env.MEMORY_AUTODB_CONFIG;
+  // 解析 config 路径：显式 env > 新全局 ~/.mengshu/config.json。
+  const explicitConfig = process.env.MENGSHU_CONFIG;
   const configPath = explicitConfig ? expandHome(explicitConfig) : resolveConfigPath();
   const rawConfig = readConfig(configPath);
   const cfg = memoryConfigSchema.parse(rawConfig);
   const db = DatabaseFactory.createProvider(cfg, resolveDbPath(cfg, configPath));
   const embeddings = new Embeddings(cfg.embedding, cfg.batchProcessing);
-  const repository = new LegacyDatabaseAdapter(db, { appId: "memory-autodb" });
+  const repository = new LegacyDatabaseAdapter(db, { appId: "mengshu" });
   const durableService = new DefaultMemoryService({ repository, embeddings });
 
   const defaultScope: MemoryScope = {
     tenantId: "local",
-    appId: "memory-autodb",
+    appId: "mengshu",
     userId: "default",
     projectId: "default",
     agentId: "default",
@@ -385,11 +385,11 @@ async function main(): Promise<void> {
     },
     enqueueJob: async ({ type }) => `standalone-${type}-${Date.now()}`,
     logger: {
-      warn: (message) => process.stderr.write(`[memory-autodb] ${message}\n`),
+      warn: (message) => process.stderr.write(`[mengshu] ${message}\n`),
     },
   });
 
-  process.stderr.write(`memory-autodb MCP started (${configPath})\n`);
+  process.stderr.write(`mengshu MCP started (${configPath})\n`);
   await startMcpStdioServer({
     service,
     agentFastPath,
@@ -403,6 +403,6 @@ async function main(): Promise<void> {
 
 main().catch((error) => {
   const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  process.stderr.write(`memory-autodb MCP failed: ${message}\n`);
+  process.stderr.write(`mengshu MCP failed: ${message}\n`);
   process.exit(1);
 });

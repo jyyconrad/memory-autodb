@@ -3,8 +3,8 @@
   "createdAt": "2026-06-10",
   "version": "v0.1",
   "suites": {
-    "memory-autodb-v0.1": {
-      "file": "memory-autodb-v0.1.jsonl",
+    "mengshu-v0.1": {
+      "file": "mengshu-v0.1.jsonl",
       "size": 30,
       "sha256": "92c8d45a50b33c08e2b258800a6b88bbebefe748d2265cf9648203309641c3ff",
       "coverage": {
@@ -17,8 +17,8 @@
       },
       "metrics": ["slot_recall", "wrong_injection", "latency"]
     },
-    "memory-autodb-safety": {
-      "file": "memory-autodb-safety.jsonl",
+    "mengshu-safety": {
+      "file": "mengshu-safety.jsonl",
       "size": 40,
       "sha256": "ed6da2125b0d622642918bf4f6f6e07c333de218bfed8fa385c776489bebade6",
       "coverage": {

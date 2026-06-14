@@ -2,7 +2,7 @@
  * core/paths.ts 单测。
  *
  * 覆盖：expandHome、resolveHomeDir 优先级（显式 > env > 默认）、派生路径正确性。
- * 测试用注入的 home/env，避免触碰真实 `~/.memory-autodb/`。
+ * 测试用注入的 home/env，避免触碰真实 `~/.mengshu/`。
  */
 
 import { describe, expect, it } from "vitest";
@@ -46,17 +46,17 @@ describe("paths/expandHome", () => {
 });
 
 describe("paths/resolveHomeDir", () => {
-  it("默认指向 `<home>/.memory-autodb`", () => {
+  it("默认指向 `<home>/.mengshu`", () => {
     expect(resolveHomeDir({ home: FAKE_HOME, env: {} })).toBe(
       `${FAKE_HOME}/${DEFAULT_HOME_DIRNAME}`,
     );
   });
 
-  it("env.MEMORY_AUTODB_HOME 可以覆盖默认 home", () => {
+  it("env.MENGSHU_HOME 可以覆盖默认 home", () => {
     expect(
       resolveHomeDir({
         home: FAKE_HOME,
-        env: { MEMORY_AUTODB_HOME: "~/custom-home" },
+        env: { MENGSHU_HOME: "~/custom-home" },
       }),
     ).toBe(`${FAKE_HOME}/custom-home`);
   });
@@ -65,14 +65,14 @@ describe("paths/resolveHomeDir", () => {
     expect(
       resolveHomeDir({
         home: FAKE_HOME,
-        env: { MEMORY_AUTODB_HOME: "~/from-env" },
+        env: { MENGSHU_HOME: "~/from-env" },
         homeDir: "~/from-option",
       }),
     ).toBe(`${FAKE_HOME}/from-option`);
   });
 
   it("绝对路径覆盖直接生效", () => {
-    expect(resolveHomeDir({ homeDir: "/var/memory-autodb" })).toBe("/var/memory-autodb");
+    expect(resolveHomeDir({ homeDir: "/var/mengshu" })).toBe("/var/mengshu");
   });
 });
 

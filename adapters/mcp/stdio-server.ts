@@ -24,7 +24,7 @@ import type { AgentFastPathService } from "../../api/agent-fast-path.js";
 import type { MemoryService } from "../../core/service-types.js";
 import { createMcpMemoryTools, type McpMemoryTool } from "./tools.js";
 
-const SERVER_NAME = "memory-autodb";
+const SERVER_NAME = "mengshu";
 const SERVER_VERSION = "2026.3.9";
 
 export interface McpStdioServerOptions {

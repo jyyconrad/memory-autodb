@@ -333,7 +333,7 @@ autodb:
 
 ### 6.4 OpenClaw 配置 Fallback
 
-如果 Hermes `config.yaml` 未配置 embedding api_key，自动读取 `~/.openclaw/conf/plugins.json` 中的 `memory-autodb` 配置。
+如果 Hermes `config.yaml` 未配置 embedding api_key，自动读取 `~/.openclaw/conf/plugins.json` 中的 `mengshu` 配置。
 
 ---
 

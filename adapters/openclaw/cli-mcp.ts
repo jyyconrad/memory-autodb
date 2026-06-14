@@ -1,7 +1,7 @@
 /**
- * OpenClaw `ltm mcp` 子命令（F1-2）。
+ * OpenClaw `ms mcp` 子命令（F1-2）。
  *
- * 本文件做什么：注册 `ltm mcp` 命令，启动 stdio MCP server，让本地 MCP 客户端
+ * 本文件做什么：注册 `ms mcp` 命令，启动 stdio MCP server，让本地 MCP 客户端
  * （Claude Desktop / Cursor 等）通过 stdin/stdout 调用长期记忆工具。
  *
  * 核心流程：
@@ -32,7 +32,7 @@ export interface McpCliDeps {
   keepAlive?: boolean;
 }
 
-/** 注册 `ltm mcp` 命令。 */
+/** 注册 `ms mcp` 命令。 */
 export function registerMcpCliCommands(memory: CommanderLike, deps: McpCliDeps): void {
   memory
     .command("mcp")

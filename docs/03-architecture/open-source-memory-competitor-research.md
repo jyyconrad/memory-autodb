@@ -2,10 +2,10 @@
 
 > 日期：2026-06-09
 > 状态：调研结论
-> 目的：为 memory-autodb 从 OpenClaw 插件演进为多产品 Agent Runtime 记忆中间件提供竞品参考、差异化定位和架构取舍依据。
+> 目的：为 mengshu 从 OpenClaw 插件演进为多产品 Agent Runtime 记忆中间件提供竞品参考、差异化定位和架构取舍依据。
 > 关联文档：
 > - [product-positioning.md](./product-positioning.md)
-> - [memory-autodb-deep-optimization-architecture.md](./memory-autodb-deep-optimization-architecture.md)
+> - [mengshu-deep-optimization-architecture.md](./mengshu-deep-optimization-architecture.md)
 > - [architecture-review-v2.md](./architecture-review-v2.md)
 > - [memory-evaluation-plan.md](../07-test/memory-evaluation-plan.md)
 
@@ -20,7 +20,7 @@
 3. **Agent Runtime 或开发工具内置记忆**：Letta、LangMem、agentmemory。
 4. **Graph-enhanced RAG / 记忆树理论参考**：LightRAG。
 
-memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
+mengshu 不应该直接复刻任何一个竞品。最合理的位置是：
 
 > **本地优先、面向用户工作上下文、MCP/REST/SDK 统一、带候选治理和评测闭环的 Agent Runtime 记忆中间件。**
 
@@ -43,19 +43,19 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 | 治理能力 | scope、权限、retention、audit、forget、conflict |
 | 可观测性 | console、viewer、logs、benchmarks |
 | 评测方式 | 是否提供公开 benchmark、可复现 harness |
-| 对 memory-autodb 的启发 | 应该吸收什么，避免什么 |
+| 对 mengshu 的启发 | 应该吸收什么，避免什么 |
 
 ---
 
 ## 3. 核心竞品总览
 
-| 项目 | 类型 | 关键能力 | 对 memory-autodb 的威胁 | 对 memory-autodb 的启发 |
+| 项目 | 类型 | 关键能力 | 对 mengshu 的威胁 | 对 mengshu 的启发 |
 |------|------|----------|--------------------------|--------------------------|
 | [Mem0](https://github.com/mem0ai/mem0) | 通用 Memory API / OSS stack | add/search、混合检索、实体链接、可自托管 server + dashboard | API 简洁、生态广、默认组件完整 | 学习 API 简洁性、provider 配置、评测公开化 |
 | [Zep](https://help.getzep.com/) / [Graphiti](https://github.com/getzep/graphiti) | 企业记忆服务 + 开源时序图谱引擎 | temporal context graph、Context Lake、治理、低延迟上下文 | 图谱理论和企业治理强 | 学习 temporal edge、episode provenance、graph retrieval |
 | [Cognee](https://github.com/topoteretes/cognee) | AI memory platform / graph pipeline | `remember/recall/forget/improve`、session cache、knowledge graph、CLI/UI | 图谱和 pipeline 抽象更成熟 | 学习四操作 API 和 session -> graph 分层 |
 | [LightRAG](https://github.com/HKUDS/LightRAG) | Graph-enhanced RAG / dual-level retrieval | graph-structured indexing、local/global/hybrid/naive/mix 查询、四类后端存储 | 不是 Agent memory，但图谱+向量检索工程成熟 | 学习记忆树、图谱索引、增量更新、向量/图/文件存储分层 |
-| [agentmemory](https://github.com/rohitg00/agentmemory) | 开发工具 agent 记忆 server + MCP/hooks | hooks 自动捕获、MCP、viewer、benchmark、本地优先 | 如果 memory-autodb 后续进入开发工具生态，会形成竞争 | 学习本地安装体验、viewer、bench harness；暂不牵引当前产品路线 |
+| [agentmemory](https://github.com/rohitg00/agentmemory) | 开发工具 agent 记忆 server + MCP/hooks | hooks 自动捕获、MCP、viewer、benchmark、本地优先 | 如果 mengshu 后续进入开发工具生态，会形成竞争 | 学习本地安装体验、viewer、bench harness；暂不牵引当前产品路线 |
 | [Supermemory](https://github.com/supermemoryai/supermemory) | Memory API + app + MCP/plugins | memory/RAG/profile/connectors，一套 API，OpenClaw 插件 | 产品包装和客户端生态强 | 学习 profile/context API、插件矩阵和 benchmark 包装 |
 | [Mengram](https://github.com/alibaizhanov/mengram) | 3 类记忆 API + OpenClaw 集成 | semantic/episodic/procedural、workflow feedback、MCP/OpenClaw | 明确打 OpenClaw 场景，流程记忆有差异化 | 学习 procedural memory，但警惕项目成熟度和 hosted 依赖 |
 | [Letta](https://docs.letta.com/letta-code/memory/) | stateful agent runtime | MemFS、git-backed memory、agent 自编辑 markdown | runtime 体验完整 | 学习版本化文件记忆，不学习 agent 直接改主库 |
@@ -86,14 +86,14 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 不足或风险：
 
 1. 产品核心仍偏 Memory API，不是 OpenClaw 原生工作流。
-2. 依赖 LLM 抽取和外部向量/pgvector，local-first 极简部署不如 memory-autodb 当前 LanceDB 路线轻。
+2. 依赖 LLM 抽取和外部向量/pgvector，local-first 极简部署不如 mengshu 当前 LanceDB 路线轻。
 3. 主叙事是事实抽取和搜索，缺少我们设计里的 5 槽位 Agent 启动上下文。
 4. ADD-only extraction 对撤销、冲突、candidate gate 的治理表达不够明确。
 
-对 memory-autodb 的建议：
+对 mengshu 的建议：
 
 1. 保留 `memory_save_explicit` / `memory_lookup` 的简洁接口，不把内部图谱、树、候选区全部暴露给 Agent。
-2. 学习 Mem0 的 provider 配置和 benchmark 公开化，把 `ltm eval` 做成第一等能力。
+2. 学习 Mem0 的 provider 配置和 benchmark 公开化，把 `ms eval` 做成第一等能力。
 3. v0.x 不要一次性追求 server + dashboard + cloud API，全量照搬会稀释 local-first 优势。
 
 ### 4.2 Zep / Graphiti
@@ -118,9 +118,9 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 
 1. Zep 的完整治理和低延迟能力主要在 managed / enterprise 产品中；Graphiti 开源部分不是完整 memory middleware。
 2. Graphiti 需要自己补用户、会话、权限、API、Console 和任务快路径。
-3. 对 memory-autodb v0.x 来说，完整 temporal graph 过重，容易拖慢最小可用闭环。
+3. 对 mengshu v0.x 来说，完整 temporal graph 过重，容易拖慢最小可用闭环。
 
-对 memory-autodb 的建议：
+对 mengshu 的建议：
 
 1. v0.x 不实现完整 Zep，但 GraphRepository 的 edge schema 应预留 `validFrom/validTo/observedAt/invalidatedAt/sourceEpisodeId`。
 2. `observations/chunks` 应作为 episode/provenance 的本地等价物，保证后续图谱可重放。
@@ -140,7 +140,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 优点：
 
 1. `remember/recall/forget/improve` 比传统 CRUD 更贴近 memory 心智模型。
-2. session cache -> permanent graph 的分层和 memory-autodb 的 hot/warm/cold path 高度一致。
+2. session cache -> permanent graph 的分层和 mengshu 的 hot/warm/cold path 高度一致。
 3. hooks 生命周期设计对 Agent Runtime 场景有参考价值。
 4. 图谱和数据 pipeline 抽象较完整。
 
@@ -150,7 +150,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 2. 对 Agent 启动前的固定槽位上下文没有清晰产品语义。
 3. `improve` 的语义强，但如果没有候选审核和 evidence gate，容易把错误经验固化。
 
-对 memory-autodb 的建议：
+对 mengshu 的建议：
 
 1. 保留我们当前 `observe/context/lookup/session_commit`，但 Console/SDK 可以提供更友好的 `remember/recall/forget/improve` 别名。
 2. 学习 Cognee 的 session memory fast cache -> permanent graph，但 v0.x 只做 SlotSnapshot，不做完整图谱。
@@ -169,21 +169,21 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 
 优点：
 
-1. 与 memory-autodb 的本地优先、MCP 和 OpenClaw 接入能力有部分重叠。
+1. 与 mengshu 的本地优先、MCP 和 OpenClaw 接入能力有部分重叠。
 2. 安装和 agent wiring 体验很强：一条命令启动 server，再 connect agent。
 3. viewer、session replay、benchmark harness 对我们很有启发。
 4. 本地优先，不依赖 cloud，是未来进入开发工具生态时的参考对象。
 
 不足或风险：
 
-1. 强开发工具 agent 场景，不适合作为 memory-autodb 当前用户工作上下文路线的主参照。
+1. 强开发工具 agent 场景，不适合作为 mengshu 当前用户工作上下文路线的主参照。
 2. MCP 工具面很宽，Agent 容易看到过多内部能力。
 3. 其 benchmark 与其他系统的横向数字并非同一数据集，需要谨慎比较。
 4. 复杂 hooks 对不同 host 的兼容成本高。
 
-对 memory-autodb 的建议：
+对 mengshu 的建议：
 
-1. 必须把首批 OpenClaw adapter 的安装和诊断体验做到同级：`ltm serve`、`ltm connect openclaw`、`ltm doctor`。
+1. 必须把首批 OpenClaw adapter 的安装和诊断体验做到同级：`ms serve`、`ms connect openclaw`、`ms doctor`。
 2. Console 至少要有 Overview、Quick Lookup、session trace 和“为什么注入”视图。
 3. MCP 工具保持少而强，不复制几十个工具的接口膨胀。
 4. `memory-eval` 应把 agentmemory 作为可选 external baseline。
@@ -212,7 +212,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 2. 自称 benchmark 领先，但需要用本地 `memory-eval` 复现，不应直接接受。
 3. 对候选审核、用户确认、主库 fallback 的治理细节不够透明。
 
-对 memory-autodb 的建议：
+对 mengshu 的建议：
 
 1. `memory_context_fast` 应提供类似 `profile + relevant memories + warnings` 的一体化输出。
 2. 文档知识库和用户记忆必须保持边界清晰，避免变成普通 RAG API。
@@ -232,7 +232,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 优点：
 
 1. procedural memory 和“失败经验 -> 工作流演化”是强差异点。
-2. OpenClaw 集成说明它是 memory-autodb 的直接边缘竞品。
+2. OpenClaw 集成说明它是 mengshu 的直接边缘竞品。
 3. 三类记忆比单纯 facts 更符合 Agent 长期成长。
 4. API 覆盖 profile、triggers、workflow history。
 
@@ -242,7 +242,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 2. hosted API 色彩强，本地自托管和数据治理边界需要进一步验证。
 3. 自动演化 procedure 如果没有严格 evidence 和候选审核，容易学坏。
 
-对 memory-autodb 的建议：
+对 mengshu 的建议：
 
 1. v0.x 不急着做 full procedural memory，但 `experience -> skill candidate` 要保留清晰路径。
 2. `memory_promote_skill` 应吸收 workflow feedback 的思想，但通过候选区和人工确认落地。
@@ -266,11 +266,11 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 
 不足或风险：
 
-1. Letta 是 agent runtime，强绑定运行时；memory-autodb 不能变成 OpenClaw 专属 runtime。
+1. Letta 是 agent runtime，强绑定运行时；mengshu 不能变成 OpenClaw 专属 runtime。
 2. Agent 直接编辑主记忆文件不适合中间件治理边界。
 3. 把某些文件完整塞进 system prompt，容易和 token budget/SLO 冲突。
 
-对 memory-autodb 的建议：
+对 mengshu 的建议：
 
 1. 可以借鉴 Markdown export/import 和 versioned memory tree。
 2. 不能让 Agent 直接改 durable 主库；所有写入仍应走 `MemoryService`、candidate、audit。
@@ -298,7 +298,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 2. 主要解决 Agent app 内部 memory，不直接提供面向用户工作上下文的中间件治理。
 3. 评测、Console、候选审核不是核心。
 
-对 memory-autodb 的建议：
+对 mengshu 的建议：
 
 1. `MemoryService` 要保持 framework-neutral，不依赖 OpenClaw 或 LangGraph。
 2. 学习 hot/background 两条 path，但快路径只能依赖已持久化和可回放数据。
@@ -319,7 +319,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 优点：
 
 1. 明确证明“纯向量 chunk 检索不足以处理复杂依赖”，图结构能补全实体、关系和跨文档上下文。
-2. `local/global/hybrid/naive/mix` 查询模式可以直接启发 memory-autodb 的 lookup 分层。
+2. `local/global/hybrid/naive/mix` 查询模式可以直接启发 mengshu 的 lookup 分层。
 3. 四类存储后端说明了向量库、图存储、KV/文件和文档状态不应该混在一个表里。
 4. 增量更新策略适合用户工作上下文这类不断变化的数据。
 
@@ -328,9 +328,9 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 1. LightRAG 面向文档知识库问答，不直接处理用户偏好、rules、candidate、revoked、scope 授权和 Agent 快路径。
 2. 依赖实体关系抽取，对本地优先 memory 中间件来说成本可能较高。
 3. 其默认 `mix` 适合深度 lookup，不适合 `context_fast` 的低延迟必读路径。
-4. 它的 source 文档是主要输入，而 memory-autodb 的输入还包括运行中 observation、显式记住、session commit 和 Console 治理操作。
+4. 它的 source 文档是主要输入，而 mengshu 的输入还包括运行中 observation、显式记住、session commit 和 Console 治理操作。
 
-对 memory-autodb 的建议：
+对 mengshu 的建议：
 
 1. 把 LightRAG 作为 **记忆树和 lookup deep 的理论参考**，不要直接把它作为 Agent 快路径。
 2. 建立类似 `local/global/naive/mix` 的召回模式：
@@ -360,19 +360,19 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 
 ---
 
-## 6. 对 memory-autodb 的直接设计影响
+## 6. 对 mengshu 的直接设计影响
 
 ### 6.1 必须强化的能力
 
 1. **极简 Agent facade**
    - 竞品都在减少 Agent 心智负担。
-   - memory-autodb 应坚持 `context_fast / observe_light / lookup / save_explicit / session_commit`。
+   - mengshu 应坚持 `context_fast / observe_light / lookup / save_explicit / session_commit`。
    - 不应把 candidate、tree buffer、graph mutation 暴露给普通 Agent。
 
 2. **本地可运行的一键体验**
    - agentmemory 和 Supermemory 都证明本地安装、连接和诊断体验会直接影响 adoption。
-   - memory-autodb 必须补 `ltm serve`、`ltm connect openclaw`、`ltm doctor`、`ltm demo`。
-   - Mem0 和 Supermemory 的启发不是复杂命令体系，而是“先 add/init，再 search/context”的低门槛入口；memory-autodb 应把 `ltm init` 做成 Project Memory Workspace 的默认入口。
+   - mengshu 必须补 `ms serve`、`ms connect openclaw`、`ms doctor`、`ms demo`。
+   - Mem0 和 Supermemory 的启发不是复杂命令体系，而是“先 add/init，再 search/context”的低门槛入口；mengshu 应把 `ms init` 做成 Project Memory Workspace 的默认入口。
 
 3. **可解释上下文**
    - Zep、Graphiti、Supermemory 都强调 prompt-ready context，而不是裸 hits。
@@ -392,22 +392,22 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 
 7. **存储视图必须分层**
    - LightRAG 的四类后端存储说明：向量、图谱、KV/文件、文档状态有不同生命周期和失效模式。
-   - memory-autodb 也应区分 durable record、vector index、tree/graph index、file/evidence、job/audit，不能把所有信息都放进 LanceDB 或一个 JSON 文件。
+   - mengshu 也应区分 durable record、vector index、tree/graph index、file/evidence、job/audit，不能把所有信息都放进 LanceDB 或一个 JSON 文件。
 
 8. **记忆树必须参与召回**
    - LightRAG 的 local/global/hybrid/mix 模式说明，树/图不是只给 UI 看。
-   - memory-autodb 的 source/topic/global tree 应分别服务来源追溯、主题实体召回、整体预览，并在 `lookup deep` 中参与融合。
+   - mengshu 的 source/topic/global tree 应分别服务来源追溯、主题实体召回、整体预览，并在 `lookup deep` 中参与融合。
 
 9. **本地项目目录应成为一等输入**
    - Mem0/Supermemory 的 `add/search/profile/context` 思路说明，用户和开发者需要极低摩擦的写入与查询入口。
    - LightRAG 的文档状态存储、增量更新、图/向量/KV 分层说明，目录内容不能只被一次性扫进向量库。
-   - memory-autodb 应引入 Project Memory Workspace：用户在本地目录执行 `ltm init` 后，系统创建 project identity、manifest、source roots、ingest policy 和增量更新链路。
+   - mengshu 应引入 Project Memory Workspace：用户在本地目录执行 `ms init` 后，系统创建 project identity、manifest、source roots、ingest policy 和增量更新链路。
    - 一个 project workspace 应支持多个 source root；每个 root 有 role、include/exclude、contentHash、lastIndexedAt 和 tree routing policy。
-   - `ltm project refresh/watch` 处理文件系统增量，`memory_session_commit` 处理 Agent 运行时增量，两者都写回同一 project scope。
+   - `ms project refresh/watch` 处理文件系统增量，`memory_session_commit` 处理 Agent 运行时增量，两者都写回同一 project scope。
 
 ### 6.2 必须避免的误区
 
-1. **不要把 memory-autodb 做成另一个大而全 SaaS API**
+1. **不要把 mengshu 做成另一个大而全 SaaS API**
    - 我们的优势是 local-first、OpenClaw 原生和私有化部署。
 
 2. **不要一次性复制 Graphiti/Zep 的完整 temporal graph**
@@ -417,7 +417,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
    - 工具越多，Agent 越容易误用内部治理能力。
 
 4. **不要让 Agent 直接编辑主库**
-   - Letta 的 MemFS 对 runtime 合理，但 memory-autodb 需要服务层、candidate 和 audit。
+   - Letta 的 MemFS 对 runtime 合理，但 mengshu 需要服务层、candidate 和 audit。
 
 5. **不要把 semanticType 做成强制分类**
    - 竞品大量事实/事件/过程记忆都无法自然归入 5 type；我们的 `kind + semanticType?` 边界是正确的。
@@ -426,7 +426,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
    - 向量库适合语义召回单元，不适合保存审计、候选状态、权限、原始大文件、树结构真源。
    - 向量索引应可重建，不能成为唯一真源。
 
-7. **不要把 `ltm init` 做成隐式全量上传或全量向量化**
+7. **不要把 `ms init` 做成隐式全量上传或全量向量化**
    - 初始化应建立 project identity、manifest、scope、source root 和 ingest policy。
    - 首次索引和后续 refresh 都必须尊重 include/exclude、隐私策略、contentHash 和 manifest diff。
    - 本地项目目录默认只保存轻量指针，原始 evidence 和记忆主库默认在用户本机全局库。
@@ -437,10 +437,10 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 
 ### 7.1 和 Mem0 / Supermemory 比
 
-它们更像“Memory API + 平台”。memory-autodb 应强调：
+它们更像“Memory API + 平台”。mengshu 应强调：
 
 1. 本地默认可用，不依赖云端 API。
-2. 本地目录可通过 `ltm init` 成为 Project Memory Workspace，而不是只把记忆交给云端 profile API。
+2. 本地目录可通过 `ms init` 成为 Project Memory Workspace，而不是只把记忆交给云端 profile API。
 3. OpenClaw 插件和中间件一体，不需要外部记忆 SaaS。
 4. 5 槽位上下文服务 Agent 启动任务，而不是只提供 search。
 5. 候选区和人工/产品治理是第一等能力。
@@ -448,7 +448,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 
 ### 7.2 和 Zep / Graphiti 比
 
-它们图谱理论更强。memory-autodb 应承认差距，但不正面硬拼：
+它们图谱理论更强。mengshu 应承认差距，但不正面硬拼：
 
 1. v0.x 不追求 Graphiti 级 temporal graph。
 2. 先把本地 episode/evidence、supersession、revoked wins、WAL replay 做对。
@@ -456,7 +456,7 @@ memory-autodb 不应该直接复刻任何一个竞品。最合理的位置是：
 
 ### 7.3 和 agentmemory 比
 
-agentmemory 是开发工具 agent 记忆方向的重要参考，但不是 memory-autodb 当前产品主战场。memory-autodb 应做出不同：
+agentmemory 是开发工具 agent 记忆方向的重要参考，但不是 mengshu 当前产品主战场。mengshu 应做出不同：
 
 1. 更少、更稳定的 MCP 工具面。
 2. 更明确的用户工作上下文中间件边界，不把开发工具 agent 作为当前优先目标。
@@ -465,7 +465,7 @@ agentmemory 是开发工具 agent 记忆方向的重要参考，但不是 memory
 
 ### 7.4 和 Letta / LangMem 比
 
-它们是 runtime memory。memory-autodb 应避免框架绑定：
+它们是 runtime memory。mengshu 应避免框架绑定：
 
 1. 不做完整 Agent runtime。
 2. 不要求 Agent 使用特定 planner / graph runtime。
@@ -484,10 +484,10 @@ agentmemory 是开发工具 agent 记忆方向的重要参考，但不是 memory
 建议 v0.1 增加：
 
 ```bash
-ltm serve
-ltm demo
-ltm connect openclaw
-ltm doctor
+ms serve
+ms demo
+ms connect openclaw
+ms doctor
 ```
 
 ### 8.2 v0.1 的 context 返回结构要更像产品接口
@@ -536,7 +536,7 @@ POST /v1/context/explain
 
 ```json
 {
-  "format": "memory-autodb-portable-v1",
+  "format": "mengshu-portable-v1",
   "nodes": [],
   "edges": [],
   "evidence": [],
@@ -547,9 +547,9 @@ POST /v1/context/explain
 并规划：
 
 ```bash
-ltm import --from mem0
-ltm import --from agentmemory
-ltm export --format portable-v1
+ms import --from mem0
+ms import --from agentmemory
+ms export --format portable-v1
 ```
 
 ---
@@ -564,7 +564,7 @@ ltm export --format portable-v1
 4. 记忆必须可治理、可解释、可评测。
 5. OpenClaw adapter 是首批验证入口；开发工具 agent 是未来可选扩展，不是当前主线。
 
-memory-autodb 当前方案方向基本正确，但必须更明确地把差异化落在：
+mengshu 当前方案方向基本正确，但必须更明确地把差异化落在：
 
 1. local-first。
 2. 面向用户工作上下文，先服务 OpenClaw adapter，但保持 framework-neutral。

@@ -74,7 +74,7 @@ const validConfig = {
 };
 
 beforeEach(() => {
-  workDir = mkdtempSync(join(tmpdir(), "memory-autodb-doctor-"));
+  workDir = mkdtempSync(join(tmpdir(), "mengshu-doctor-"));
   logs = [];
   originalLog = console.log;
   console.log = (message?: unknown) => {
@@ -199,18 +199,18 @@ describe("checkManifest", () => {
 
 describe("registerDoctorCliCommands 注册", () => {
   test("注册 doctor / demo / connect 命令", () => {
-    const ltm = new FakeCommand("ltm");
-    registerDoctorCliCommands(ltm as never, {});
-    expect(ltm.find("doctor")).toBeDefined();
-    expect(ltm.find("demo")).toBeDefined();
-    expect(ltm.find("connect")).toBeDefined();
+    const ms = new FakeCommand("ms");
+    registerDoctorCliCommands(ms as never, {});
+    expect(ms.find("doctor")).toBeDefined();
+    expect(ms.find("demo")).toBeDefined();
+    expect(ms.find("connect")).toBeDefined();
   });
 });
 
-describe("ltm doctor", () => {
+describe("ms doctor", () => {
   test("embedding 不可用时输出 warning 而非 fatal，并打印汇总", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerDoctorCliCommands(ltm as never, {
+    const ms = new FakeCommand("ms");
+    registerDoctorCliCommands(ms as never, {
       config: validConfig,
       service: { health: vi.fn(async () => ({ ok: true, records: 3 })) } as never,
       embeddings: {
@@ -220,46 +220,46 @@ describe("ltm doctor", () => {
       },
     });
 
-    await expect(ltm.find("doctor")?.actionHandler?.(workDir, {})).resolves.not.toThrow();
+    await expect(ms.find("doctor")?.actionHandler?.(workDir, {})).resolves.not.toThrow();
     const text = logs.join("\n");
     expect(text).toMatch(/warning/i);
     expect(text).not.toMatch(/FATAL/);
   });
 
   test("DB 异常时输出 fatal", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerDoctorCliCommands(ltm as never, {
+    const ms = new FakeCommand("ms");
+    registerDoctorCliCommands(ms as never, {
       config: validConfig,
       service: { health: vi.fn(async () => ({ ok: false, error: "db gone" })) } as never,
       embeddings: { embed: vi.fn(async () => [0.1]) },
     });
 
-    await ltm.find("doctor")?.actionHandler?.(workDir, {});
+    await ms.find("doctor")?.actionHandler?.(workDir, {});
     expect(logs.join("\n")).toMatch(/FATAL/);
   });
 });
 
-describe("ltm demo", () => {
+describe("ms demo", () => {
   test("注入 fake service 时 store 与 recall 被调用且不 crash", async () => {
-    const ltm = new FakeCommand("ltm");
+    const ms = new FakeCommand("ms");
     const storeMemory = vi.fn(async () => ({ id: "x", stored: true }));
     const recall = vi.fn(async () => ({ scope: {} as never, query: "q", hits: [] }));
-    registerDoctorCliCommands(ltm as never, {
+    registerDoctorCliCommands(ms as never, {
       config: validConfig,
       service: { storeMemory, recall } as never,
       embeddings: { embed: vi.fn(async () => [0.1, 0.2]) },
     });
 
-    await expect(ltm.find("demo")?.actionHandler?.(workDir, {})).resolves.not.toThrow();
+    await expect(ms.find("demo")?.actionHandler?.(workDir, {})).resolves.not.toThrow();
     expect(storeMemory).toHaveBeenCalled();
   });
 
   test("embedding 不可用（recall/store 抛错）时降级提示而非 crash", async () => {
-    const ltm = new FakeCommand("ltm");
+    const ms = new FakeCommand("ms");
     const storeMemory = vi.fn(async () => {
       throw new Error("embedding offline");
     });
-    registerDoctorCliCommands(ltm as never, {
+    registerDoctorCliCommands(ms as never, {
       config: validConfig,
       service: { storeMemory, recall: vi.fn() } as never,
       embeddings: {
@@ -269,29 +269,29 @@ describe("ltm demo", () => {
       },
     });
 
-    await expect(ltm.find("demo")?.actionHandler?.(workDir, {})).resolves.not.toThrow();
+    await expect(ms.find("demo")?.actionHandler?.(workDir, {})).resolves.not.toThrow();
     expect(logs.join("\n")).toMatch(/降级|embedding|无法/);
   });
 });
 
-describe("ltm connect", () => {
+describe("ms connect", () => {
   test("输出 server URL 与 scope 示例", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerDoctorCliCommands(ltm as never, { config: validConfig });
+    const ms = new FakeCommand("ms");
+    registerDoctorCliCommands(ms as never, { config: validConfig });
 
-    await ltm.find("connect")?.actionHandler?.("openclaw", { dir: workDir });
+    await ms.find("connect")?.actionHandler?.("openclaw", { dir: workDir });
     const text = logs.join("\n");
     expect(text).toContain("http://127.0.0.1:3847");
     expect(text).toContain("scope");
   });
 
   test("缺 secret 时提示生成", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerDoctorCliCommands(ltm as never, {
+    const ms = new FakeCommand("ms");
+    registerDoctorCliCommands(ms as never, {
       config: { ...validConfig, server: { host: "127.0.0.1", port: 3847 } },
     });
 
-    await ltm.find("connect")?.actionHandler?.("openclaw", { dir: workDir });
+    await ms.find("connect")?.actionHandler?.("openclaw", { dir: workDir });
     expect(logs.join("\n")).toMatch(/secret/i);
   });
 });

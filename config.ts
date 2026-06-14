@@ -174,9 +174,9 @@ function resolveDefaultDbPath(): string {
     // best-effort
   }
 
-  // 兼容回退：仅当用户未显式覆盖 MEMORY_AUTODB_HOME 时，才考虑旧路径。
+  // 兼容回退：仅当用户未显式覆盖 MENGSHU_HOME 时，才考虑旧路径。
   // 显式覆盖代表用户已经选择新 home，不应被旧目录截胡。
-  const explicitHome = process.env.MEMORY_AUTODB_HOME;
+  const explicitHome = process.env.MENGSHU_HOME;
   if (!explicitHome || explicitHome.trim().length === 0) {
     try {
       const legacy = resolveLegacyLanceDbPath();
@@ -184,7 +184,7 @@ function resolveDefaultDbPath(): string {
         if (!warnedLegacyDbPath) {
           warnedLegacyDbPath = true;
           console.warn(
-            "[memory-autodb] 检测到旧路径 ~/.openclaw/memory/lancedb，建议运行 `ltm migrate-home` 迁移到 ~/.memory-autodb/",
+            "[mengshu] 检测到旧路径 ~/.openclaw/memory/lancedb，建议运行 `ms migrate-home` 迁移到 ~/.mengshu/",
           );
         }
         return legacy;
@@ -602,7 +602,7 @@ export const memoryConfigSchema = {
     },
     dbPath: {
       label: "LanceDB Path",
-      placeholder: "~/.memory-autodb/memory/lancedb",
+      placeholder: "~/.mengshu/memory/lancedb",
       advanced: true,
       help: "Path to local LanceDB database (only for lancedb type)",
     },

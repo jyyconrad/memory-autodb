@@ -1,6 +1,6 @@
-# memory-autodb
+# mengshu
 
-memory-autodb 是面向多产品 Agent Runtime 的本地优先记忆中间件，主要服务 OpenClaw 类型产品之间的工作记忆连续性。它让同一用户在不同 Claw 产品之间切换时，工作记忆、协作偏好、长期约束、历史经验和可用资源仍然持续存在。
+mengshu（梦枢）是面向多产品 Agent Runtime 的本地优先记忆中间件，主要服务 OpenClaw 类型产品之间的工作记忆连续性。它让同一用户在不同 Claw 产品之间切换时，工作记忆、协作偏好、长期约束、历史经验和可用资源仍然持续存在。
 
 它从 OpenClaw 长期记忆插件演进而来，用 LanceDB、Supabase 或 Postgres 保存对话记忆和文档知识，提供自动捕获、自动召回、目录扫描、CLI、REST、MCP facade、JS SDK 和 Web Console 基线能力。当前产品方向暂不进入 coding-agent 细分领域。
 
@@ -29,7 +29,7 @@ npm install
     "model": "text-embedding-3-small"
   },
   "dbType": "lancedb",
-  "dbPath": "~/.memory-autodb/memory/lancedb",
+  "dbPath": "~/.mengshu/memory/lancedb",
   "autoCapture": true,
   "autoRecall": true
 }
@@ -37,9 +37,9 @@ npm install
 
 **环境变量覆盖**：
 
-- `MEMORY_AUTODB_HOME`：覆盖全局目录（默认 `~/.memory-autodb`）
-- `MEMORY_AUTODB_CONFIG`：覆盖配置文件路径
-- `MEMORY_AUTODB_ENV`：覆盖 .env 文件路径
+- `MENGSHU_HOME`：覆盖全局目录（默认 `~/.mengshu`）
+- `MENGSHU_CONFIG`：覆盖配置文件路径
+- `MENGSHU_ENV`：覆盖 .env 文件路径
 
 **从旧路径迁移**：
 
@@ -47,10 +47,10 @@ npm install
 
 ```bash
 # 预览迁移计划（不执行）
-ltm migrate-home
+ms migrate-home
 
 # 执行迁移并备份
-ltm migrate-home --execute --backup
+ms migrate-home --execute --backup
 ```
 
 支持 OpenAI-compatible embedding endpoint。模型维度由 [config.ts](./config.ts) 中的 `vectorDimsForModel()` 校验；更换模型前先确认数据库向量维度一致。
@@ -72,27 +72,27 @@ npx tsc --noEmit
 | 召回记忆 | `memory_recall`、`POST /v1/recall`、MCP `memory_recall` | 支持向量检索、过滤、跨分类搜索 |
 | 构建上下文 | `POST /v1/context`、MCP `memory_context` | 输出 prompt-safe context block |
 | Agent 快路径 | `memory_context_fast`、`POST /v1/agent/context` | 返回 5 槽位任务上下文 |
-| 扫描目录 | `memory_scan_directory`、`ltm scan` | 扫描 Markdown 文件并进入 ingestion pipeline |
-| 管理数据 | `ltm stats/tables/query/export/cleanup/migrate` | 统计、查询、导出、清理和迁移估算 |
-| 本机服务 | `ltm serve` | 启动 REST server 和 `/console` 静态页面 |
+| 扫描目录 | `memory_scan_directory`、`ms scan` | 扫描 Markdown 文件并进入 ingestion pipeline |
+| 管理数据 | `ms stats/tables/query/export/cleanup/migrate` | 统计、查询、导出、清理和迁移估算 |
+| 本机服务 | `ms serve` | 启动 REST server 和 `/console` 静态页面 |
 
 ## CLI 示例
 
 ```bash
 # 查看统计
-ltm stats
+ms stats
 
 # 搜索核心记忆
-ltm search "用户偏好" --limit 5
+ms search "用户偏好" --limit 5
 
 # 扫描 Markdown 目录到知识库
-ltm scan ./docs --category 知识库 --ignore node_modules dist
+ms scan ./docs --category 知识库 --ignore node_modules dist
 
-# 迁移旧配置（从 ~/.openclaw 迁移到 ~/.memory-autodb）
-ltm migrate-home --execute --backup
+# 迁移旧配置（从 ~/.openclaw 迁移到 ~/.mengshu）
+ms migrate-home --execute --backup
 
 # 启动本机 REST server，默认 127.0.0.1:3847
-ltm serve
+ms serve
 ```
 
 完整命令说明见 [CLI 命令](./docs/05-api/cli-commands.md)。
@@ -102,7 +102,7 @@ ltm serve
 启动服务：
 
 ```bash
-ltm serve --host 127.0.0.1 --port 3847
+ms serve --host 127.0.0.1 --port 3847
 ```
 
 健康检查：
@@ -131,12 +131,12 @@ curl -X POST http://127.0.0.1:3847/v1/context \
 | 了解全局配置目录升级 | [global-config-directory-upgrade.md](./docs/03-architecture/global-config-directory-upgrade.md) |
 | 使用 CLI、REST、OpenClaw 工具 | [docs/05-api](./docs/05-api/README.md) |
 | 理解当前中间件架构 | [memory-middleware-architecture.md](./docs/03-architecture/memory-middleware-architecture.md) |
-| 理解长期深层优化方案 | [memory-autodb-deep-optimization-architecture.md](./docs/03-architecture/memory-autodb-deep-optimization-architecture.md) |
+| 理解长期深层优化方案 | [mengshu-deep-optimization-architecture.md](./docs/03-architecture/mengshu-deep-optimization-architecture.md) |
 | 查看数据模型和 schema | [docs/06-database/schema.md](./docs/06-database/schema.md) |
 | 查看测试和验证命令 | [docs/07-test/plugin-test.md](./docs/07-test/plugin-test.md) |
 | 查看版本变更 | [docs/09-changelog](./docs/09-changelog/README.md) |
 
-`docs/03-architecture/copy-from-mate/` 是外部 Banto/iFlyMate 记忆系统材料，用于架构参考，不是 memory-autodb 当前实现承诺。
+`docs/03-architecture/copy-from-mate/` 是外部 Banto/iFlyMate 记忆系统材料，用于架构参考，不是 mengshu 当前实现承诺。
 
 ## 项目结构
 
@@ -166,7 +166,7 @@ curl -X POST http://127.0.0.1:3847/v1/context \
 | v3.0 | 5 问题语义协议、Agent 快路径、候选区和 Slot Context Builder |
 | v4.0 | MemoryService、REST/MCP/SDK/ingestion/retrieval/graph/tree/console 的多产品 runtime 记忆基线 |
 | v0.1.x | 产品方向重定位后的 Working Context 版本线；v0.1.1 已补 MCP stdio、LLM client 和 in-memory tree 自动构建 |
-| v0.1.2 | 全局配置目录升级（`~/.memory-autodb/`）、配置密钥分离、统一客户端接入、项目指针化、真实 MCP/LLM 接入收口 |
+| v0.1.2 | 全局配置目录升级（`~/.mengshu/`）、配置密钥分离、统一客户端接入、项目指针化、真实 MCP/LLM 接入收口 |
 | vNext | 以 [product-roadmap.md](./docs/03-architecture/product-roadmap.md) 为准，重点是跨 appId Working Context 和完整 Project Memory Workspace |
 
 发布和变更记录以 [docs/09-changelog](./docs/09-changelog/README.md) 为准。

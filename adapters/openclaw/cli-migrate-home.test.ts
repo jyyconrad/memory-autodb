@@ -1,5 +1,5 @@
 /**
- * cli-migrate-home.test.ts - ltm migrate-home 命令单元测试
+ * cli-migrate-home.test.ts - ms migrate-home 命令单元测试
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -17,7 +17,7 @@ describe("cli-migrate-home", () => {
     // 创建隔离的测试环境
     testDir = mkdtempSync(join(tmpdir(), "migrate-home-test-"));
     legacyHome = join(testDir, ".openclaw");
-    newHome = join(testDir, ".memory-autodb");
+    newHome = join(testDir, ".mengshu");
 
     // 创建旧目录结构
     mkdirSync(legacyHome, { recursive: true });
@@ -33,7 +33,7 @@ describe("cli-migrate-home", () => {
   it("dry-run 模式不修改文件系统", async () => {
     // 准备
     writeFileSync(join(legacyHome, ".env"), "TEST=value");
-    writeFileSync(join(legacyHome, "memory-autodb-mcp.json"), "{}");
+    writeFileSync(join(legacyHome, "mengshu-mcp.json"), "{}");
 
     // 执行 dry-run
     await migrateHome({
@@ -41,7 +41,7 @@ describe("cli-migrate-home", () => {
       homePathOptions: {
         homeDir: newHome,
         home: testDir,
-        env: { MEMORY_AUTODB_HOME: newHome },
+        env: { MENGSHU_HOME: newHome },
       },
     });
 
@@ -60,7 +60,7 @@ describe("cli-migrate-home", () => {
   it("--execute 正确迁移文件", async () => {
     // 准备源文件
     writeFileSync(join(legacyHome, ".env"), "TEST=value");
-    writeFileSync(join(legacyHome, "memory-autodb-mcp.json"), '{"dbType":"lancedb"}');
+    writeFileSync(join(legacyHome, "mengshu-mcp.json"), '{"dbType":"lancedb"}');
     mkdirSync(join(legacyHome, "memory", "lancedb"), { recursive: true });
     writeFileSync(join(legacyHome, "memory", "lancedb", "test.db"), "test");
 
@@ -70,7 +70,7 @@ describe("cli-migrate-home", () => {
       homePathOptions: {
         homeDir: newHome,
         home: testDir,
-        env: { MEMORY_AUTODB_HOME: newHome },
+        env: { MENGSHU_HOME: newHome },
       },
     });
 
@@ -93,7 +93,7 @@ describe("cli-migrate-home", () => {
       homePathOptions: {
         homeDir: newHome,
         home: testDir,
-        env: { MEMORY_AUTODB_HOME: newHome },
+        env: { MENGSHU_HOME: newHome },
       },
     });
 
@@ -115,7 +115,7 @@ describe("cli-migrate-home", () => {
       homePathOptions: {
         homeDir: newHome,
         home: testDir,
-        env: { MEMORY_AUTODB_HOME: newHome },
+        env: { MENGSHU_HOME: newHome },
       },
     });
 
@@ -136,7 +136,7 @@ describe("cli-migrate-home", () => {
       homePathOptions: {
         homeDir: newHome,
         home: testDir,
-        env: { MEMORY_AUTODB_HOME: newHome },
+        env: { MENGSHU_HOME: newHome },
       },
     });
 
@@ -154,7 +154,7 @@ describe("cli-migrate-home", () => {
   it("迁移后验证关键文件存在", async () => {
     // 准备完整的源目录
     writeFileSync(join(legacyHome, ".env"), "TEST=value");
-    writeFileSync(join(legacyHome, "memory-autodb-mcp.json"), "{}");
+    writeFileSync(join(legacyHome, "mengshu-mcp.json"), "{}");
     mkdirSync(join(legacyHome, "memory", "lancedb"), { recursive: true });
     writeFileSync(join(legacyHome, "memory", "lancedb", "dummy"), "");
 
@@ -164,7 +164,7 @@ describe("cli-migrate-home", () => {
       homePathOptions: {
         homeDir: newHome,
         home: testDir,
-        env: { MEMORY_AUTODB_HOME: newHome },
+        env: { MENGSHU_HOME: newHome },
       },
     });
 
@@ -177,7 +177,7 @@ describe("cli-migrate-home", () => {
   it("缺失的源文件不阻止迁移", async () => {
     // 只创建部分源文件
     writeFileSync(join(legacyHome, ".env"), "TEST=value");
-    // 不创建 memory-autodb-mcp.json 和 memory/ 目录
+    // 不创建 mengshu-mcp.json 和 memory/ 目录
 
     // 执行迁移
     await migrateHome({
@@ -185,7 +185,7 @@ describe("cli-migrate-home", () => {
       homePathOptions: {
         homeDir: newHome,
         home: testDir,
-        env: { MEMORY_AUTODB_HOME: newHome },
+        env: { MENGSHU_HOME: newHome },
       },
     });
 

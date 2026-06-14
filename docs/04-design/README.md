@@ -16,7 +16,7 @@
 | [04.1-overview/memory-plugin-design.md](./04.1-overview/memory-plugin-design.md) | 当前 | OpenClaw 插件工具、钩子、CLI 和中间件边界概览 |
 | [04.1-overview/web-console-design.md](./04.1-overview/web-console-design.md) | 方案 | Web Console 信息架构和交互设计 |
 | [04.2-detail/next-iteration-product-plan.md](./04.2-detail/next-iteration-product-plan.md) | 下一迭代方案 | 基于当前代码的跨产品 Agent Runtime 记忆闭环方案 |
-| [04.2-detail/memory-middleware-development-plan.md](./04.2-detail/memory-middleware-development-plan.md) | 实施计划 | memory-autodb 中间件化分阶段任务 |
+| [04.2-detail/memory-middleware-development-plan.md](./04.2-detail/memory-middleware-development-plan.md) | 实施计划 | mengshu 中间件化分阶段任务 |
 | [04.2-detail/structured-knowledge-graph-memory-tree-detail.md](./04.2-detail/structured-knowledge-graph-memory-tree-detail.md) | 方案 | 图谱与记忆树详细设计 |
 | [04.2-detail/auto-capture-recall-detail.md](./04.2-detail/auto-capture-recall-detail.md) | 当前 | 自动捕获和自动召回设计 |
 | [04.2-detail/directory-scanner-detail.md](./04.2-detail/directory-scanner-detail.md) | 当前 | 目录扫描和 ingestion pipeline 设计 |

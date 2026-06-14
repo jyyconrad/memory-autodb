@@ -138,10 +138,10 @@ describe("REST router", () => {
       {
         id: "entity-1",
         scope,
-        canonicalName: "memory-autodb",
-        displayName: "memory-autodb",
+        canonicalName: "mengshu",
+        displayName: "mengshu",
         type: "project",
-        aliases: ["memory-autodb"],
+        aliases: ["mengshu"],
         mentionCount: 1,
         mentionCount30d: 1,
         distinctSourceCount: 1,
@@ -163,7 +163,7 @@ describe("REST router", () => {
       method: "POST",
       path: "/v1/graph/query",
       headers: {},
-      body: { scope, query: "memory" },
+      body: { scope, query: "mengshu" },
     });
 
     expect(result.status).toBe(200);

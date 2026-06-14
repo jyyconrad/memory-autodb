@@ -11,7 +11,7 @@
  * 5. 缓存结果到 SlotSnapshot
  *
  * 参考文档：
- * - docs/03-architecture/memory-autodb-deep-optimization-architecture.md §5/§9
+ * - docs/03-architecture/mengshu-deep-optimization-architecture.md §5/§9
  */
 
 import type {

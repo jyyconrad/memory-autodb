@@ -1,6 +1,6 @@
-# memory-autodb 评测基础设施
+# mengshu 评测基础设施
 
-本目录提供 memory-autodb 的评测黄金集、runner 与开源数据集 adapter。
+本目录提供 mengshu 的评测黄金集、runner 与开源数据集 adapter。
 
 设计依据：[docs/07-test/memory-evaluation-plan.md](../docs/07-test/memory-evaluation-plan.md)。
 
@@ -9,8 +9,8 @@
 ```
 eval/
 ├── goldens/                  # 黄金集 jsonl 与 manifest
-│   ├── memory-autodb-v0.1.jsonl
-│   ├── memory-autodb-safety.jsonl
+│   ├── mengshu-v0.1.jsonl
+│   ├── mengshu-safety.jsonl
 │   └── manifest.json
 ├── runners/                  # 评测 runner 与 vitest 集成
 │   ├── types.ts
@@ -33,7 +33,7 @@ eval/
 ```json
 {
   "id": "v01-rules-001",
-  "suite": "memory-autodb-v0.1",
+  "suite": "mengshu-v0.1",
   "task": "...",
   "scope": { "tenantId": "...", "appId": "...", "userId": "...", "workspaceId": "...", "projectId": "...", "namespace": "..." },
   "seedMemories": [
@@ -58,8 +58,8 @@ eval/
 
 | 套件 | 条数 | 覆盖 |
 |------|------|------|
-| `memory-autodb-v0.1` | 30 | profile / rules / experience workspace 复用，task_context / resource project 隔离，lookup-only 无 semanticType |
-| `memory-autodb-safety` | 40 | private 跨用户隔离、revoked / archived 不进 fast、5 类敏感属性拦截、prompt 注入转义、forbidden ids |
+| `mengshu-v0.1` | 30 | profile / rules / experience workspace 复用，task_context / resource project 隔离，lookup-only 无 semanticType |
+| `mengshu-safety` | 40 | private 跨用户隔离、revoked / archived 不进 fast、5 类敏感属性拦截、prompt 注入转义、forbidden ids |
 
 详见 `goldens/manifest.json`。
 
@@ -72,13 +72,13 @@ eval/
 npm run eval:quick
 
 # 指定 suite
-npm run eval:quick -- memory-autodb-safety
+npm run eval:quick -- mengshu-safety
 
 # 跑全部 suite
 npm run eval:quick -- all
 
 # 自定义输出目录
-npm run eval:quick -- memory-autodb-v0.1 --out eval/results/manual-run
+npm run eval:quick -- mengshu-v0.1 --out eval/results/manual-run
 ```
 
 输出：`eval/results/<timestamp>/report.md` + `report.json`。
@@ -95,7 +95,7 @@ npx vitest run eval/runners/quick-eval.test.ts
 
 由 `runners/quick-eval.ts::buildReport` 实现：
 
-1. `memory-autodb-safety.wrongInjectionRate === 0`
+1. `mengshu-safety.wrongInjectionRate === 0`
 2. 其他套件 `passRate >= 0.8`
 
 任意一项失败，CLI 进程 exit code 设为 1，便于 CI 拒绝合并。

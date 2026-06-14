@@ -1,4 +1,4 @@
-# memory-autodb 产品路线图
+# mengshu 产品路线图
 
 > 日期：2026-06-14
 > 状态：当前版本规划真源
@@ -9,7 +9,7 @@
 
 ## 1. 路线图原则
 
-memory-autodb 的产品路线图只围绕两个主轴展开：
+mengshu 的产品路线图只围绕两个主轴展开：
 
 1. **Working Context 语义层**：把长期记忆整理成 Agent Runtime 可直接使用的 5 slot 上下文。
 2. **Project Memory Workspace 本地入口**：把本地目录变成用户工作上下文的 project 容器。
@@ -53,11 +53,11 @@ memory-autodb 的产品路线图只围绕两个主轴展开：
 | 5 slot `context_fast` | 已完成 | `ContextFastResponse`、SlotContextBuilder、quick eval |
 | 注入安全 | 已完成 | safety suite 40/40 PASS，误注入 0% |
 | 候选区治理 | 已完成基础闭环 | Console Candidates API/page + candidate promotion |
-| Project Workspace identity | 已完成 lite 版 | `ltm init` + `.memory-autodb.json` manifest |
+| Project Workspace identity | 已完成 lite 版 | `ms init` + `.mengshu.json` manifest |
 | MCP 真实接入 | 已完成 stdio transport | v0.1.1 changelog，仍需真实客户端冒烟 |
 | LLM 客户端 | 已完成 OpenAI-compatible client | v0.1.1 changelog，仍需真实 API 冒烟 |
 | 记忆树 | 已完成 in-memory 自动构建基础 | observe 入队 `build_tree`，`lookup_deep` 融合 tree summary |
-| quick eval | 已完成本地黄金集 | `memory-autodb-v0.1`、`memory-autodb-safety` |
+| quick eval | 已完成本地黄金集 | `mengshu-v0.1`、`mengshu-safety` |
 
 ### 2.3 当前缺口
 
@@ -82,21 +82,21 @@ memory-autodb 的产品路线图只围绕两个主轴展开：
 
 ### v0.1.2：全局配置目录升级与真实接入收口
 
-定位：把 memory-autodb 从 OpenClaw 插件路径演进为独立本地优先记忆中间件，建立 `~/.memory-autodb/` 全局目录体系，统一配置、密钥、项目 registry 和客户端接入；同时把 v0.1.1 已完成的 MCP、LLM、tree 接线从”测试可用”推进到”真实本机可用”。
+定位：把 mengshu 从 OpenClaw 插件路径演进为独立本地优先记忆中间件，建立 `~/.mengshu/` 全局目录体系，统一配置、密钥、项目 registry 和客户端接入；同时把 v0.1.1 已完成的 MCP、LLM、tree 接线从”测试可用”推进到”真实本机可用”。
 
 目标用户价值：
 
-> 开发者拥有独立的 `~/.memory-autodb/` 全局目录，配置和密钥分离管理，Codex/Claude/OpenClaw 等客户端统一指向同一记忆中间件实例；MCP/LLM 可真实调用，`doctor/eval` 可判断接入成功。
+> 开发者拥有独立的 `~/.mengshu/` 全局目录，配置和密钥分离管理，Codex/Claude/OpenClaw 等客户端统一指向同一记忆中间件实例；MCP/LLM 可真实调用，`doctor/eval` 可判断接入成功。
 
 范围：
 
 | 模块 | 交付 |
 |------|------|
-| 全局目录 | 建立 `~/.memory-autodb/` 目录结构：`config.json`、`.env`、`registry.json`、`memory/`、`projects/`、`logs/`、`backups/` |
+| 全局目录 | 建立 `~/.mengshu/` 目录结构：`config.json`、`.env`、`registry.json`、`memory/`、`projects/`、`logs/`、`backups/` |
 | 配置分离 | `config.json` 只存运行策略（不存密钥明文），`${...}` 占位符从 `.env` 解析 |
-| 项目指针 | 项目目录只保存轻量 `.memory-autodb.json` 指针，完整 manifest 存全局 `projects/<projectId>/` |
+| 项目指针 | 项目目录只保存轻量 `.mengshu.json` 指针，完整 manifest 存全局 `projects/<projectId>/` |
 | 客户端接入 | Codex、Claude Code、Claude Desktop、OpenClaw 统一接入配置示例和环境变量规范 |
-| 兼容迁移 | 兼容读取 `~/.openclaw/` 旧路径并输出迁移 warning；提供 `ltm migrate-home` 迁移命令 |
+| 兼容迁移 | 兼容读取 `~/.openclaw/` 旧路径并输出迁移 warning；提供 `ms migrate-home` 迁移命令 |
 | Registry | `registry.json` 本机项目快速索引，支持项目列表、目录移动重新绑定和孤儿清理 |
 | MCP | 用 Claude Desktop / Cursor 或 MCP inspector 做真实 stdio 冒烟；沉淀配置示例和排障清单 |
 | LLM | 用真实 OpenAI-compatible chat endpoint 跑 `summarize` 冒烟；失败时明确降级行为 |
@@ -116,12 +116,12 @@ Release gate：
 
 | 门槛 | 目标 |
 |------|------|
-| 全局目录 | `~/.memory-autodb/config.json` 和 `.env` 可正常加载；旧路径兼容读取有 warning |
-| 项目初始化 | `ltm init` 同时写项目指针和全局 `projects/<projectId>/manifest.json` |
+| 全局目录 | `~/.mengshu/config.json` 和 `.env` 可正常加载；旧路径兼容读取有 warning |
+| 项目初始化 | `ms init` 同时写项目指针和全局 `projects/<projectId>/manifest.json` |
 | 客户端接入 | Codex、Claude Code 通过统一配置可调用 MCP 工具 |
 | TypeScript | `npx tsc --noEmit` 通过 |
 | Unit / integration | `npx vitest run` 全绿 |
-| Eval | `memory-autodb-v0.1` 30/30 PASS，`memory-autodb-safety` 40/40 PASS |
+| Eval | `mengshu-v0.1` 30/30 PASS，`mengshu-safety` 40/40 PASS |
 | MCP smoke | `listTools` 能看到 11 个工具；`memory_context_fast` / `memory_lookup` 可真实调用 |
 | LLM smoke | 真实 provider `summarize` 成功；无配置时 `NullLlmClient` 降级符合预期 |
 | Docs | README、CLI、MCP、config、changelog、全局目录文档同步 |
@@ -141,10 +141,10 @@ Release gate：
 | Scope | Owner Scope / Working Context Scope 分离；新增 `WorkingContextResolver` 和跨 appId 查询策略 |
 | Repository | provider scope filter 实现和性能 spike；避免全量向量搜索后再业务过滤 |
 | Project Workspace | 完整 manifest registry、`sourceRoots[]`、role、include/exclude、source root status |
-| CLI | `ltm project add-root/index/refresh/watch/context/lookup` 最小闭环 |
+| CLI | `ms project add-root/index/refresh/watch/context/lookup` 最小闭环 |
 | Scanner | scanner 改造为 source root aware；按 contentHash 和 manifest diff 增量更新 |
 | Cross-product demo | 至少两个 `appId` 的本地 demo，验证 profile/rules 复用、task_context 不跨 project |
-| Eval | 新增 `memory-autodb-cross-product` 黄金集和 release gate |
+| Eval | 新增 `mengshu-cross-product` 黄金集和 release gate |
 | Console | context preview 展示 owner provenance、working context scope 和 filtered reason |
 
 不做：
@@ -176,7 +176,7 @@ Release gate：
 | 多目录 | 多 source root 的增删改、orphan root 告警、路径移动追踪 |
 | 资源召回 | resource slot 返回文件/链接/工具位置、摘要和 evidence，不注入长文本 |
 | 增量索引 | refresh/watch 的批处理、失败重试、generated_output 默认排除 |
-| 备份恢复 | 最小 `ltm backup/restore` 或数据包导出方案 |
+| 备份恢复 | 最小 `ms backup/restore` 或数据包导出方案 |
 | Doctor | 增加 workspace/source root/index freshness 检查 |
 
 Release gate：
@@ -280,11 +280,11 @@ Release gate：
 
 ### 第一批：v0.1.2 收口
 
-1. 全局配置目录升级：建立 `~/.memory-autodb/` 目录体系，实现 `config.json` + `.env` 分离加载。
+1. 全局配置目录升级：建立 `~/.mengshu/` 目录体系，实现 `config.json` + `.env` 分离加载。
 2. 配置解析扩展：支持 `configPath/envPath` 环境变量、`${...}` 占位符解析，保留旧路径兼容。
-3. 项目初始化重构：`ltm init` 同时写项目指针和全局 `projects/<projectId>/manifest.json` + `registry.json`。
-4. 客户端接入统一：更新 `scripts/memory-autodb-mcp.ts` 默认路径，沉淀 Codex/Claude/OpenClaw 配置示例。
-5. 迁移命令：实现 `ltm migrate-home --from ~/.openclaw --to ~/.memory-autodb --dry-run`。
+3. 项目初始化重构：`ms init` 同时写项目指针和全局 `projects/<projectId>/manifest.json` + `registry.json`。
+4. 客户端接入统一：更新 `scripts/mengshu-mcp.ts` 默认路径，沉淀 Codex/Claude/OpenClaw 配置示例。
+5. 迁移命令：实现 `ms migrate-home --from ~/.openclaw --to ~/.mengshu --dry-run`。
 6. MCP 真实客户端 smoke：记录配置、工具清单、调用结果和失败排障。
 7. LLM 真实 provider smoke：验证 `llm` 配置、摘要调用、降级行为。
 8. 版本治理：统一 `package.json`、changelog、README 的版本口径。

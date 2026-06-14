@@ -1,13 +1,13 @@
 # 目录扫描详细设计
 
-本文描述 `memory_scan_directory` 和 `ltm scan` 的当前扫描链路。
+本文描述 `memory_scan_directory` 和 `ms scan` 的当前扫描链路。
 
 ## 入口
 
 | 入口 | 参数 |
 |------|------|
 | OpenClaw 工具 `memory_scan_directory` | `directory`、`ignorePaths`、`ignoreRules`、`targetTable`、`autoEnrichMetadata` |
-| CLI `ltm scan` | `<directory>`、`--ignore <paths...>`、`--category <name>` |
+| CLI `ms scan` | `<directory>`、`--ignore <paths...>`、`--category <name>` |
 
 ## 当前流程
 

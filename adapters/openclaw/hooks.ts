@@ -120,7 +120,7 @@ export async function handleBeforeAgentStartRecall(
       return undefined;
     }
 
-    context.logger?.info?.(`memory-autodb: injecting ${memoryHits.length} memories into context`);
+    context.logger?.info?.(`mengshu: injecting ${memoryHits.length} memories into context`);
     return {
       prependContext: formatRelevantMemoriesContext(
         memoryHits.map((hit) => {
@@ -135,7 +135,7 @@ export async function handleBeforeAgentStartRecall(
       ),
     };
   } catch (err) {
-    context.logger?.warn(`memory-autodb: recall failed: ${String(err)}`);
+    context.logger?.warn(`mengshu: recall failed: ${String(err)}`);
     return undefined;
   }
 }
@@ -223,8 +223,8 @@ export async function handleAgentEndCapture(
       await context.service.storeMemory({ record });
     }
 
-    context.logger?.info?.(`memory-autodb: auto-captured ${newEntries.length} new memories`);
+    context.logger?.info?.(`mengshu: auto-captured ${newEntries.length} new memories`);
   } catch (err) {
-    context.logger?.warn(`memory-autodb: capture failed: ${String(err)}`);
+    context.logger?.warn(`mengshu: capture failed: ${String(err)}`);
   }
 }

@@ -1,5 +1,5 @@
 {
-  "id": "memory-autodb",
+  "id": "mengshu",
   "config": {
     "embedding": {
       "apiKey": "${OPENAI_API_KEY}",
@@ -22,7 +22,7 @@
     "dbType": "lancedb",
 
     // LanceDB 本地存储配置 (仅 dbType=lancedb 时需要)
-    "dbPath": "~/.openclaw/memory/autodb",
+    "dbPath": "~/.mengshu/lancedb",
 
     // Supabase 云端存储配置 (可选，提供则开启混合模式或纯云端模式)
     "supabase": {

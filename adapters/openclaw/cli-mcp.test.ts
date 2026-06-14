@@ -1,7 +1,7 @@
 /**
  * cli-mcp.ts 单元测试。
  *
- * 验证 `ltm mcp` 命令注册与启动逻辑：
+ * 验证 `ms mcp` 命令注册与启动逻辑：
  * 1. 命令以 "mcp" 名注册，带 description。
  * 2. action 调用注入的 startServer，传入 service / agentFastPath / namespaces。
  * 3. keepAlive=false 时启动后立即 close（测试不挂起进程）。

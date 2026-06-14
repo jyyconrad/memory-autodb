@@ -1,8 +1,8 @@
 /**
- * Project Memory Workspace manifest（.memory-autodb.json）的 schema 与读写。
+ * Project Memory Workspace manifest（.mengshu.json）的 schema 与读写。
  *
  * 本文件做什么：把"当前目录"解析成稳定的 workspaceId/projectId，并以轻量 JSON 指针
- * 文件落地，支撑 `ltm init` / `ltm project` 子命令的 project scope identity。
+ * 文件落地，支撑 `ms init` / `ms project` 子命令的 project scope identity。
  *
  * 核心流程：
  * 1. createManifest：缺省 id 时由目录路径派生稳定 hash（同目录幂等）。
@@ -11,14 +11,14 @@
  *
  * 关键边界（A2-lite）：
  * - identity 稳定性靠两层保证：同目录 createManifest 幂等（路径 hash）；
- *   目录移动时靠 .memory-autodb.json 指针保留原 id（read 不重算）。因此 init 默认幂等不覆盖。
+ *   目录移动时靠 .mengshu.json 指针保留原 id（read 不重算）。因此 init 默认幂等不覆盖。
  * - v0.1 不强制目录索引，sourceRoots 默认空数组。
  * - 所有函数不修改入参，返回新对象。
  *
  * v0.1.2 升级：
  * - 拆分项目指针（version: "0.2"，仅 workspaceId/projectId/manifestPath/createdAt）
  *   与全局完整 manifest（version: "0.1"，包含 slotReusePolicy/sourceRoots 等长期状态）。
- * - 项目目录 `.memory-autodb.json` 写轻量指针；全局 `~/.memory-autodb/projects/<projectId>/manifest.json` 写完整 manifest。
+ * - 项目目录 `.mengshu.json` 写轻量指针；全局 `~/.mengshu/projects/<projectId>/manifest.json` 写完整 manifest。
  * - readProjectManifest 透明兼容旧 0.1 完整 manifest（legacy）与新 0.2 指针（pointer → 读全局）。
  */
 
@@ -31,7 +31,7 @@ import type { MemoryScope, MemoryScopeInput, MemorySemanticType, MemoryVisibilit
 import { resolveProjectManifestPath, type HomePathOptions } from "../../core/paths.js";
 
 /** manifest 指针文件名，放在 project 目录根部。 */
-export const MANIFEST_FILENAME = ".memory-autodb.json";
+export const MANIFEST_FILENAME = ".mengshu.json";
 
 /** 完整 manifest schema 版本（全局目录）。 */
 export const MANIFEST_VERSION = "0.1";
@@ -40,7 +40,7 @@ export const MANIFEST_VERSION = "0.1";
 export const MANIFEST_POINTER_VERSION = "0.2";
 
 /**
- * .memory-autodb.json 的最小 schema（A2-lite）。
+ * .mengshu.json 的最小 schema（A2-lite）。
  * sourceRoots 字段保留但 v0.1 通常为空（不强制目录索引）。
  */
 export interface MemoryAutodbManifest {
@@ -156,7 +156,7 @@ export function createPointer(
 }
 
 /**
- * 读取 dir 下的 .memory-autodb.json，区分指针与旧完整 manifest。
+ * 读取 dir 下的 .mengshu.json，区分指针与旧完整 manifest。
  * - 返回 { kind: "pointer", pointer } 如果 version === "0.2" 或包含 manifestPath。
  * - 返回 { kind: "legacy", manifest } 如果是旧格式（version === "0.1" 或无 manifestPath）。
  * - 返回 null 如果文件不存在。
@@ -186,8 +186,8 @@ export function readPointerOrLegacyManifest(
 
 /**
  * 同时写项目指针和全局完整 manifest。
- * - 项目目录：dir/.memory-autodb.json（轻量指针）
- * - 全局目录：~/.memory-autodb/projects/<projectId>/manifest.json（完整 manifest）
+ * - 项目目录：dir/.mengshu.json（轻量指针）
+ * - 全局目录：~/.mengshu/projects/<projectId>/manifest.json（完整 manifest）
  * 全局目录不存在时自动创建。
  */
 export function writeProjectIdentity(
@@ -225,7 +225,7 @@ export function readProjectManifest(dir: string, options?: HomePathOptions): Mem
   const globalManifestPath = resolveProjectManifestPath(pointer.projectId, options);
   if (!existsSync(globalManifestPath)) {
     throw new Error(
-      `项目指针指向的全局 manifest 不存在（${globalManifestPath}），数据可能已被破坏。请检查或重新运行 ltm init。`,
+      `项目指针指向的全局 manifest 不存在（${globalManifestPath}），数据可能已被破坏。请检查或重新运行 ms init。`,
     );
   }
   const raw = readFileSync(globalManifestPath, "utf8");
@@ -243,7 +243,7 @@ export function manifestPath(dir: string): string {
 }
 
 /**
- * 读取 dir 下的 .memory-autodb.json。
+ * 读取 dir 下的 .mengshu.json。
  * 不存在返回 null；JSON 解析失败抛带文件路径的错误（便于排查）。
  * @deprecated 优先使用 readProjectManifest，它透明支持 pointer/legacy 两种格式。
  */

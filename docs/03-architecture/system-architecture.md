@@ -1,6 +1,6 @@
 # 系统架构
 
-本文描述当前 memory-autodb 的代码架构。更完整的中间件化路线见 [memory-middleware-architecture.md](./memory-middleware-architecture.md)。
+本文描述当前 mengshu 的代码架构。更完整的中间件化路线见 [memory-middleware-architecture.md](./memory-middleware-architecture.md)。
 
 ## 总体结构
 
@@ -26,7 +26,7 @@ OpenClaw Plugin
 | 模式 | 状态 | 说明 |
 |------|------|------|
 | Embedded OpenClaw plugin | 当前主路径 | `index.ts` 注册工具、钩子和 CLI |
-| 本机 server | 已有基线 | `ltm serve` 启动 Node HTTP server，默认 `127.0.0.1:3847` |
+| 本机 server | 已有基线 | `ms serve` 启动 Node HTTP server，默认 `127.0.0.1:3847` |
 | MCP facade | 已有基线 | 提供工具注册表和调用映射，尚不启动 transport |
 | JS SDK | 已有基线 | 面向 REST API 的 client |
 | Remote/backend-proxy | 方案中 | 配置类型已保留，完整实现后续推进 |
@@ -72,7 +72,7 @@ memory_context_fast / POST /v1/agent/context
 ### 目录扫描
 
 ```text
-memory_scan_directory / ltm scan
+memory_scan_directory / ms scan
   -> ingest/adapters/file-system.ts
   -> ingest/canonicalize.ts
   -> ingest/chunker.ts

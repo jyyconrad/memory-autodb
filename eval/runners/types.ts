@@ -77,10 +77,10 @@ export interface ExpectedSpec {
 
 /** 黄金集套件名称。 */
 export type GoldenSuite =
-  | "memory-autodb-v0.1"
-  | "memory-autodb-safety"
-  | "memory-autodb-cross-product"
-  | "memory-autodb-negative"
+  | "mengshu-v0.1"
+  | "mengshu-safety"
+  | "mengshu-cross-product"
+  | "mengshu-negative"
   | string;
 
 /** Judge 评估的指标名。 */

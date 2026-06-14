@@ -78,10 +78,10 @@ describe("console API", () => {
       {
         id: "entity-1",
         scope,
-        canonicalName: "memory-autodb",
-        displayName: "memory-autodb",
+        canonicalName: "mengshu",
+        displayName: "mengshu",
         type: "project",
-        aliases: ["memory-autodb"],
+        aliases: ["mengshu"],
         mentionCount: 1,
         mentionCount30d: 1,
         distinctSourceCount: 1,
@@ -114,7 +114,7 @@ describe("console API", () => {
       summaries: 1,
       entities: 1,
     });
-    expect(overview.hotTopics).toEqual([{ id: "entity-1", label: "memory-autodb", hotness: 7 }]);
+    expect(overview.hotTopics).toEqual([{ id: "entity-1", label: "mengshu", hotness: 7 }]);
     expect(overview.dailyDigest?.title).toBe("Daily Digest 2026-06-06");
   });
 

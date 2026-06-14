@@ -8,7 +8,7 @@
 
 插件层只做三类事情：
 
-1. 注册 OpenClaw 能识别的工具、hooks 和 `ltm` 命令。
+1. 注册 OpenClaw 能识别的工具、hooks 和 `ms` 命令。
 2. 将 OpenClaw 参数映射到 core service、legacy provider 或 ingestion pipeline。
 3. 保持旧工具和旧配置兼容。
 
@@ -50,7 +50,7 @@ memoryConfigSchema.parse(api.pluginConfig)
 
 ## CLI
 
-`ltm` 命令分两部分注册：
+`ms` 命令分两部分注册：
 
 - `index.ts` 注册 legacy 命令：`list`、`stats`、`tables`、`search`、`query`、`scan`、`cleanup`、`export`、`kb:list`。
 - `adapters/openclaw/cli.ts` 注册中间件命令：`serve`、`status`、`health`、`migrate`。
@@ -64,7 +64,7 @@ memoryConfigSchema.parse(api.pluginConfig)
 | Prompt 注入 | `retrieval/prompt-safety.ts` 检测和转义 |
 | 空/异常输入 | handler 层校验必填字段 |
 | 删除误操作 | `memory_cleanup` 要求至少一个过滤条件 |
-| REST 暴露 | `ltm serve` 默认 loopback，secret 可选 |
+| REST 暴露 | `ms serve` 默认 loopback，secret 可选 |
 | embedding 失败 | 由 embedding port/provider 抛出错误，调用侧返回失败 |
 
 ## 已知边界

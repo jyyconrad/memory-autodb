@@ -1,4 +1,4 @@
-# memory-autodb 产品方向决策对比
+# mengshu 产品方向决策对比
 
 > 日期：2026-06-10
 > 状态：已收敛决策稿
@@ -10,7 +10,7 @@
 
 ## 0. TL;DR
 
-**问题诊断**：作为开源项目，memory-autodb 不能同时追求 Agent 启动上下文、目录知识索引、治理 Console、上下文路由、互操作协议和企业 Memory Lake。短期必须只选择一个专项领域做到清楚、可用、可验证。
+**问题诊断**：作为开源项目，mengshu 不能同时追求 Agent 启动上下文、目录知识索引、治理 Console、上下文路由、互操作协议和企业 Memory Lake。短期必须只选择一个专项领域做到清楚、可用、可验证。
 
 **2026 H1 关键信号**：
 1. Mem0 通过 **OpenMemory MCP** 已占据"跨 MCP 客户端共享私有记忆"心智（事实先发）
@@ -19,14 +19,14 @@
 4. **claude-mem 65k-75k stars**——coding agent 记忆赛道已重红海
 5. 真正适合开源专项切入的是：**用户工作上下文模型 + 本地项目工作空间入口**
 
-**结论**：不做大而全 Memory API，不做 coding agent 专用记忆，不做企业 Memory Lake，也不把 proactive 路由作为 v0.x 主线。memory-autodb 的开源专项应收敛为：
+**结论**：不做大而全 Memory API，不做 coding agent 专用记忆，不做企业 Memory Lake，也不把 proactive 路由作为 v0.x 主线。mengshu 的开源专项应收敛为：
 
 > **Working Context 语义层 + Project Memory Workspace 本地入口。**
 
 **最终推荐**（详见 §6）：只做两个主轴：
 
 1. **Working Context 语义层**：用 5 slot 把长期记忆整理成 Agent Runtime 可用的用户工作上下文。
-2. **Project Memory Workspace**：用 `ltm init` 把本地目录变成工作上下文容器，支持 project identity、manifest、source roots、增量 evidence 和 context/lookup。
+2. **Project Memory Workspace**：用 `ms init` 把本地目录变成工作上下文容器，支持 project identity、manifest、source roots、增量 evidence 和 context/lookup。
 
 治理 Console、MCP 互操作、路由 DSL、图谱、procedural memory、企业后端都不作为 v0.x 主轴，只保留必要接口和后续扩展余地。
 
@@ -76,7 +76,7 @@
 |---|----------------|------|--------|--------------|-----------|
 | 1 | **Working Context 语义层**：Agent 在任何接入产品里都拿到用户偏好、规则、项目背景和资源线索 | 无人正面（语义层） | 早期红海（记忆叙事拥挤，但工作上下文模型未定） | 90% | scope policy + 5 slot + 2 个 appId demo + 三套黄金集 |
 | 2 | **本地 Agent 记忆 API**：Mem0 的本地版 | Mem0、Supermemory、memvid、memU、engram | **重红海** | 60%（要砍很多） | 极简 API + MCP server + benchmark |
-| 3 | **Project Memory Workspace**：把本地目录变成用户工作上下文容器 | LightRAG、Cognee、code-review-graph 只在知识索引侧相似 | **可做专项**（若不滑向通用 RAG） | 70% | `ltm init` + manifest + source roots + 增量 evidence + context/lookup |
+| 3 | **Project Memory Workspace**：把本地目录变成用户工作上下文容器 | LightRAG、Cognee、code-review-graph 只在知识索引侧相似 | **可做专项**（若不滑向通用 RAG） | 70% | `ms init` + manifest + source roots + 增量 evidence + context/lookup |
 | 4 | **跨 agent 上下文路由层**：根据任务自动决定哪些记忆以何粒度注入哪个 agent | 无人正面 | 有差异但抽象 | 60%（需新建路由引擎） | v0.x 不做，只保留评分和预算接口 |
 | 5 | **Self-improving Agent Memory**：Agent 通过反思自动改进记忆/技能 | 学术：Voyager/Reflexion/FORGE；工程：稀缺 | **工程蓝海**（学术红） | 50% | reflection pipeline + skill candidate + approval |
 | 6 | **Coding agent 专用记忆**：Claude Code/Codex/Cursor session 持久化 | claude-mem(65k+)、VS Code 1.123、engram、cortex-ai-memory | **极重红海** | 30%（偏离现有方向） | session sync + project memory |
@@ -129,7 +129,7 @@
 
 **MVP**：API 三件套 + LanceDB + MCP server。
 
-**6 周可交付**：API 收缩 + MCP 适配 + `ltm benchmark` + Mem0 风格 dashboard。
+**6 周可交付**：API 收缩 + MCP 适配 + `ms benchmark` + Mem0 风格 dashboard。
 
 **与竞品最终竞争位**：
 - 正面 Mem0 / Supermemory / memvid / memU / engram。
@@ -150,19 +150,19 @@
 
 **一句话**：把本地项目目录变成用户工作上下文的长期容器，而不是通用知识库或 RAG 平台。
 
-**MVP**：`ltm init` + `.memory-autodb.json` + project manifest + source roots + 增量 evidence + `ltm project context/lookup`。
+**MVP**：`ms init` + `.mengshu.json` + project manifest + source roots + 增量 evidence + `ms project context/lookup`。
 
 **6 周可交付**：
-1. `ltm init` 创建 project identity 和本地 manifest。
+1. `ms init` 创建 project identity 和本地 manifest。
 2. `sourceRoots[]` 支持多目录、role、include/exclude、contentHash。
-3. `ltm project refresh` 用 manifest diff 做文件新增/修改/删除/移动增量更新。
-4. `ltm project context` 预览当前 project scope 的 5 slot。
-5. `ltm project lookup` 速查资源、偏好、规则、项目背景和 evidence。
+3. `ms project refresh` 用 manifest diff 做文件新增/修改/删除/移动增量更新。
+4. `ms project context` 预览当前 project scope 的 5 slot。
+5. `ms project lookup` 速查资源、偏好、规则、项目背景和 evidence。
 
 **与竞品最终竞争位**：
 - 如果做成“目录到知识图谱”，会正面撞 LightRAG/Cognee/code-review-graph，不推荐。
 - 如果做成“Working Context 的本地 project 容器”，竞争位不同：重点不是问答效果，而是 project identity、scope、evidence、session commit、5 slot context。
-- VS Code Project Memory、coding agent 记忆都偏 IDE 或 coding 场景；memory-autodb 的边界是本地优先 Agent 应用工作上下文。
+- VS Code Project Memory、coding agent 记忆都偏 IDE 或 coding 场景；mengshu 的边界是本地优先 Agent 应用工作上下文。
 
 **红蓝海**：如果按 RAG 做是重红海；按 Working Context 容器做，是可做的开源专项。
 
@@ -171,7 +171,7 @@
 **风险**：
 - 首次 index 很容易滑向“扫描所有文件 + 建知识库”的重工程，必须用 include/exclude、role、maxFileSize 和 background job 控制。
 - tree/graph 只能作为可重建增强层，不作为 v0.x 购买理由。
-- `ltm init` 必须先建立 project identity 和 scope，不能先做全量向量化。
+- `ms init` 必须先建立 project identity 和 scope，不能先做全量向量化。
 
 **结论**：**保留为主轴之二**。它不是独立知识库方向，而是 Working Context 在本地落地的默认入口。
 
@@ -403,16 +403,16 @@
 - 价值主张：不是通用 memory API，而是把长期记忆整理成 Agent Runtime 可直接使用的 Working Context。
 
 **主轴 2：Project Memory Workspace**
-- 一句话定位：**在本地目录执行 `ltm init`，把目录变成 Working Context 的 project 容器。**
-- v0.1（6 周）：`ltm init` 创建 project identity + manifest（不强制目录索引）+ project context/lookup。
-- v0.2（8-10 周）：完整 source roots + 增量 evidence + scanner 改造 + `ltm project refresh/watch`。
+- 一句话定位：**在本地目录执行 `ms init`，把目录变成 Working Context 的 project 容器。**
+- v0.1（6 周）：`ms init` 创建 project identity + manifest（不强制目录索引）+ project context/lookup。
+- v0.2（8-10 周）：完整 source roots + 增量 evidence + scanner 改造 + `ms project refresh/watch`。
 - 价值主张：不是通用 RAG，而是给用户工作上下文一个本地、可追溯、可增量维护的落点。
 
 **存储层策略（用户决策）**：scope filter 和召回逻辑统一走 `DatabaseProvider` 接口，不绑定 LanceDB 特性。LanceDB 是 v0.1 默认 provider；如果跨 appId scope filter 性能不达标，可替换为 postgres/supabase（pgvector）而不改服务层。保证存储可替换。
 
 **两个主轴一句话合并**：
 
-> memory-autodb 是面向 Agent 应用的本地优先 Working Context 中间件：用 5 slot 交付运行上下文，用 Project Memory Workspace 承载本地项目工作记忆。
+> mengshu 是面向 Agent 应用的本地优先 Working Context 中间件：用 5 slot 交付运行上下文，用 Project Memory Workspace 承载本地项目工作记忆。
 
 ### 6.2 暂不做（要敢砍）
 
@@ -485,10 +485,10 @@
 
 **第 2-3 周（Milestone A1-lite + A2-lite）**：
 - 单 appId scope policy + filtered 字段 + warning 枚举 + extractor 人格/敏感黑名单
-- `ltm init` 创建 project identity + manifest（不强制目录索引）
+- `ms init` 创建 project identity + manifest（不强制目录索引）
 
 **第 4-5 周（Milestone B + C）**：
-- `ltm demo/connect/status`（单 appId 验证）
+- `ms demo/connect/status`（单 appId 验证）
 - 最小 Console：Quick Lookup / context preview / candidates
 
 **第 6 周（Milestone D-lite）**：

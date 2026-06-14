@@ -1,4 +1,4 @@
-# memory-autodb 文档
+# mengshu 文档
 
 本文档目录按读者任务组织：先找当前可用能力，再看架构和设计，最后查历史方案和版本记录。
 
@@ -18,7 +18,7 @@
 
 ### 架构评审者
 
-1. 先读 [memory-autodb-deep-optimization-architecture.md](./03-architecture/memory-autodb-deep-optimization-architecture.md)。
+1. 先读 [mengshu-deep-optimization-architecture.md](./03-architecture/mengshu-deep-optimization-architecture.md)。
 2. 再读 [architecture-review-v2.md](./03-architecture/architecture-review-v2.md)。
 3. 需要追溯设计来源时，再看 `03-architecture/copy-from-mate/` 下的外部参考材料。
 
@@ -30,7 +30,7 @@
 | 当前中间件架构 | [03-architecture/memory-middleware-architecture.md](./03-architecture/memory-middleware-architecture.md) |
 | 当前产品路线图 | [03-architecture/product-roadmap.md](./03-architecture/product-roadmap.md) |
 | 全局配置目录升级（v0.1.2 核心） | [03-architecture/global-config-directory-upgrade.md](./03-architecture/global-config-directory-upgrade.md) |
-| 深层优化方案 | [03-architecture/memory-autodb-deep-optimization-architecture.md](./03-architecture/memory-autodb-deep-optimization-architecture.md) |
+| 深层优化方案 | [03-architecture/mengshu-deep-optimization-architecture.md](./03-architecture/mengshu-deep-optimization-architecture.md) |
 | REST、OpenClaw 工具和 MCP facade | [05-api/memory-api.md](./05-api/memory-api.md) |
 | CLI | [05-api/cli-commands.md](./05-api/cli-commands.md) |
 | 数据库和 schema | [06-database/schema.md](./06-database/schema.md) |
@@ -56,7 +56,7 @@
 | 类型 | 判断标准 | 示例 |
 |------|----------|------|
 | 当前文档 | 与当前代码、配置和测试一致 | `README.md`、`05-api/`、`06-database/schema.md` |
-| 方案文档 | 描述正在推进或后续计划，不能当作已实现能力 | `memory-autodb-deep-optimization-architecture.md` |
+| 方案文档 | 描述正在推进或后续计划，不能当作已实现能力 | `mengshu-deep-optimization-architecture.md` |
 | 历史文档 | 记录已交付阶段或旧版本，保留用于追溯 | `PROJECT-SUMMARY.md`、`DELIVERY.md`、旧升级方案 |
 | 外部参考 | 来自 Banto/iFlyMate 的记忆系统材料，只作为设计输入 | `03-architecture/copy-from-mate/` |
 

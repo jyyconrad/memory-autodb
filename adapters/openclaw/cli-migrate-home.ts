@@ -1,25 +1,25 @@
 /**
- * OpenClaw `ltm migrate-home` 命令：一键迁移 ~/.openclaw/ → ~/.memory-autodb/。
+ * OpenClaw `ms migrate-home` 命令：一键迁移 ~/.openclaw/ → ~/.mengshu/。
  *
  * 本文件做什么：实现全局配置目录的自动化迁移，将旧的 OpenClaw 插件路径迁移到独立的
- * memory-autodb 全局目录，确保配置、密钥、数据库文件的完整性和可追溯性。
+ * mengshu 全局目录，确保配置、密钥、数据库文件的完整性和可追溯性。
  *
  * 核心流程：
  * 1. **默认 dry-run 模式**：不带 `--execute` 时只打印迁移计划，不执行实际文件操作。
  * 2. **迁移清单**（按顺序执行）：
- *    - `~/.openclaw/.env` → `~/.memory-autodb/.env`（如果源存在）
- *    - `~/.openclaw/memory-autodb-mcp.json` → `~/.memory-autodb/config.json`（如果源存在）
- *    - `~/.openclaw/memory/` → `~/.memory-autodb/memory/`（递归复制整个目录）
- *    - `~/.openclaw/conf/plugins.json` 中的 `entries["memory-autodb"].config` → 提示用户手工迁移
+ *    - `~/.openclaw/.env` → `~/.mengshu/.env`（如果源存在）
+ *    - `~/.openclaw/mengshu-mcp.json` → `~/.mengshu/config.json`（如果源存在）
+ *    - `~/.openclaw/memory/` → `~/.mengshu/memory/`（递归复制整个目录）
+ *    - `~/.openclaw/conf/plugins.json` 中的 `entries["mengshu"].config` → 提示用户手工迁移
  * 3. **备份机制**：`--backup` 选项时，迁移前先将 `~/.openclaw/` 复制到 `~/.openclaw.backup-<timestamp>/`。
  * 4. **冲突检测**：目标文件已存在时询问是否覆盖（默认跳过）；`--force` 时直接覆盖。
  * 5. **迁移后验证**：校验关键文件存在性（.env、config.json、memory/lancedb/）。
- * 6. **registry 更新提示**：扫描 `~/.openclaw/` 下的 `.memory-autodb.json` 项目指针，提示用户可能需要重新 `ltm init`。
+ * 6. **registry 更新提示**：扫描 `~/.openclaw/` 下的 `.mengshu.json` 项目指针，提示用户可能需要重新 `ms init`。
  *
  * 关键边界（v0.1.2）：
  * - 不自动修改 `~/.openclaw/conf/plugins.json`，只输出迁移指引。
  * - 不删除源目录，由用户确认迁移成功后手动清理。
- * - 项目指针 `.memory-autodb.json` 不迁移（属于项目目录，不属于全局目录）。
+ * - 项目指针 `.mengshu.json` 不迁移（属于项目目录，不属于全局目录）。
  * - 迁移失败时输出明确错误，不做部分回滚（用户可用备份恢复）。
  */
 
@@ -89,9 +89,9 @@ function generateMigrationTasks(
       type: "file",
       required: false,
     },
-    // 2. 配置文件（旧名称 memory-autodb-mcp.json → 新名称 config.json）
+    // 2. 配置文件（旧名称 mengshu-mcp.json → 新名称 config.json）
     {
-      source: join(legacyHome, "memory-autodb-mcp.json"),
+      source: join(legacyHome, "mengshu-mcp.json"),
       target: join(newHome, CONFIG_FILENAME),
       type: "file",
       required: false,
@@ -234,7 +234,7 @@ function scanProjectPointers(legacyHome: string, maxDepth: number = 3): string[]
         }
 
         const stat = statSync(fullPath);
-        if (stat.isFile() && entry === ".memory-autodb.json") {
+        if (stat.isFile() && entry === ".mengshu.json") {
           pointers.push(fullPath);
         } else if (stat.isDirectory()) {
           scan(fullPath, depth + 1);
@@ -262,7 +262,7 @@ export async function migrateHome(options: MigrateHomeOptions = {}): Promise<voi
   const newHome = resolveHomeDir(homePathOptions);
 
   console.log("=".repeat(60));
-  console.log("memory-autodb 全局配置目录迁移");
+  console.log("mengshu 全局配置目录迁移");
   console.log("=".repeat(60));
   console.log(`源目录: ${legacyHome}`);
   console.log(`目标目录: ${newHome}`);
@@ -337,18 +337,18 @@ export async function migrateHome(options: MigrateHomeOptions = {}): Promise<voi
   // 7. 扫描项目指针
   const projectPointers = scanProjectPointers(legacyHome);
   if (projectPointers.length > 0) {
-    console.log(`\n⚠ 检测到 ${projectPointers.length} 个项目指针（.memory-autodb.json）:`);
+    console.log(`\n⚠ 检测到 ${projectPointers.length} 个项目指针（.mengshu.json）:`);
     for (const pointer of projectPointers) {
       console.log(`  - ${pointer}`);
     }
-    console.log("\n建议: 迁移完成后，对这些项目重新运行 `ltm init` 以更新 registry。");
+    console.log("\n建议: 迁移完成后，对这些项目重新运行 `ms init` 以更新 registry。");
   }
 
   // 8. 检查 plugins.json
   const pluginsJsonPath = join(legacyHome, "conf", "plugins.json");
   if (existsSync(pluginsJsonPath)) {
     console.log("\n⚠ 检测到 OpenClaw 插件配置: ~/.openclaw/conf/plugins.json");
-    console.log("  如果其中包含 memory-autodb 内联配置，请手动迁移到 ~/.memory-autodb/config.json");
+    console.log("  如果其中包含 mengshu 内联配置，请手动迁移到 ~/.mengshu/config.json");
     console.log("  或更新插件配置使用 configPath/envPath 指向新路径。");
   }
 
@@ -370,17 +370,17 @@ export async function migrateHome(options: MigrateHomeOptions = {}): Promise<voi
   if (dryRun) {
     console.log("\n这是预览模式，未执行实际迁移。");
     console.log("使用 --execute 参数执行迁移:");
-    console.log("  ltm migrate-home --execute");
+    console.log("  ms migrate-home --execute");
     if (!backup) {
       console.log("\n建议添加 --backup 参数以自动备份旧目录:");
-      console.log("  ltm migrate-home --execute --backup");
+      console.log("  ms migrate-home --execute --backup");
     }
   } else {
     if (verified && result.failed === 0) {
       console.log("\n✓ 迁移成功！");
       console.log("\n后续步骤:");
-      console.log("  1. 验证配置: ltm stats");
-      console.log("  2. 测试功能: ltm search \"test\"");
+      console.log("  1. 验证配置: ms stats");
+      console.log("  2. 测试功能: ms search \"test\"");
       console.log("  3. 更新客户端配置（Codex/Claude Desktop/OpenClaw）指向新路径");
       console.log(`  4. 确认无问题后可删除旧目录: rm -rf ${legacyHome}`);
     } else {
@@ -393,7 +393,7 @@ export async function migrateHome(options: MigrateHomeOptions = {}): Promise<voi
 }
 
 /**
- * 注册 `ltm migrate-home` 命令
+ * 注册 `ms migrate-home` 命令
  */
 export function registerMigrateHomeCommand(
   memory: CommanderLike,
@@ -401,7 +401,7 @@ export function registerMigrateHomeCommand(
 ): void {
   memory
     .command("migrate-home")
-    .description("迁移 ~/.openclaw/ 到 ~/.memory-autodb/（默认预览模式）")
+    .description("迁移 ~/.openclaw/ 到 ~/.mengshu/（默认预览模式）")
     .option("--execute", "执行迁移（不带此参数只打印计划）")
     .option("--backup", "迁移前备份 ~/.openclaw")
     .option("--force", "覆盖已存在的目标文件")

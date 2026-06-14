@@ -1,8 +1,8 @@
-# memory-autodb 记忆中间件开发计划
+# mengshu 记忆中间件开发计划
 
 > **For Codex:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task.
 
-**Goal:** 将 memory-autodb 从 OpenClaw 单插件演进为可被 OpenClaw、MCP、REST、SDK 和 Web Console 复用的记忆中间件。
+**Goal:** 将 mengshu 从 OpenClaw 单插件演进为可被 OpenClaw、MCP、REST、SDK 和 Web Console 复用的记忆中间件。
 
 **Architecture:** 先抽出兼容旧行为的 `MemoryService` 和 `MemoryScope`，让 OpenClaw 插件只作为 adapter；再补本机 server、REST/MCP/API、通用 ingestion、混合检索、结构化图谱/记忆树、Web Console。每个阶段都保持旧 `memory_store` / `memory_recall` / `memory_scan_directory` / `memory_cleanup` 可用。
 
@@ -454,7 +454,7 @@ git add adapters/mcp package.json package-lock.json
 git commit -m "feat: expose core memory tools over mcp"
 ```
 
-### Task 3.3：CLI/ltm serve/status
+### Task 3.3：CLI/ms serve/status
 
 **Files:**
 - Modify: `index.ts` 或 Create: `adapters/openclaw/cli.ts`
@@ -462,14 +462,14 @@ git commit -m "feat: expose core memory tools over mcp"
 
 **命令:**
 
-1. `ltm serve`
-2. `ltm status`
-3. `ltm health`
+1. `ms serve`
+2. `ms status`
+3. `ms health`
 
 **验收:**
 
-- 不破坏现有 `ltm stats/tables/search/query/export/scan/cleanup`。
-- `ltm status` 能显示 server URL、dbType、table stats。
+- 不破坏现有 `ms stats/tables/search/query/export/scan/cleanup`。
+- `ms status` 能显示 server URL、dbType、table stats。
 
 **验证:**
 
@@ -899,8 +899,8 @@ git commit -m "feat: add quick lookup console view"
 **命令:**
 
 ```bash
-ltm migrate --to-schema v4 --dry-run
-ltm migrate --to-schema v4
+ms migrate --to-schema v4 --dry-run
+ms migrate --to-schema v4
 ```
 
 **验收:**

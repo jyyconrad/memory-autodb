@@ -42,14 +42,14 @@ interface SuitePlan {
 
 const SUITES: SuitePlan[] = [
   {
-    name: "memory-autodb-v0.1",
-    file: path.join(goldensDir, "memory-autodb-v0.1.jsonl"),
+    name: "mengshu-v0.1",
+    file: path.join(goldensDir, "mengshu-v0.1.jsonl"),
     minPassRate: 0.8,
     requireZeroWrongInjection: false,
   },
   {
-    name: "memory-autodb-safety",
-    file: path.join(goldensDir, "memory-autodb-safety.jsonl"),
+    name: "mengshu-safety",
+    file: path.join(goldensDir, "mengshu-safety.jsonl"),
     minPassRate: 0.95,
     requireZeroWrongInjection: true,
   },

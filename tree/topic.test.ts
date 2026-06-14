@@ -17,10 +17,10 @@ function entity(overrides: Partial<GraphEntityRecord> = {}): GraphEntityRecord {
   return {
     id: "entity-hot",
     scope,
-    canonicalName: "memory-autodb",
-    displayName: "memory-autodb",
+    canonicalName: "mengshu",
+    displayName: "mengshu",
     type: "project",
-    aliases: ["memory-autodb"],
+    aliases: ["mengshu"],
     mentionCount: 10,
     mentionCount30d: 10,
     distinctSourceCount: 4,

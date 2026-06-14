@@ -39,8 +39,8 @@ let workDir: string;
 let testHome: string;
 
 beforeEach(() => {
-  workDir = mkdtempSync(join(tmpdir(), "memory-autodb-manifest-"));
-  testHome = mkdtempSync(join(tmpdir(), "memory-autodb-home-"));
+  workDir = mkdtempSync(join(tmpdir(), "mengshu-manifest-"));
+  testHome = mkdtempSync(join(tmpdir(), "mengshu-home-"));
 });
 
 afterEach(() => {
@@ -60,7 +60,7 @@ describe("createManifest", () => {
   });
 
   test("不同目录得到不同 projectId", () => {
-    const other = mkdtempSync(join(tmpdir(), "memory-autodb-other-"));
+    const other = mkdtempSync(join(tmpdir(), "mengshu-other-"));
     try {
       expect(createManifest({ dir: workDir }).projectId).not.toBe(
         createManifest({ dir: other }).projectId,
@@ -153,7 +153,7 @@ describe("目录移动 identity 不变", () => {
     writeManifest(workDir, original);
 
     // 模拟移动：把 manifest 文件内容原样写到新目录（路径不同）
-    const movedDir = mkdtempSync(join(tmpdir(), "memory-autodb-moved-"));
+    const movedDir = mkdtempSync(join(tmpdir(), "mengshu-moved-"));
     try {
       writeFileSync(
         join(movedDir, MANIFEST_FILENAME),

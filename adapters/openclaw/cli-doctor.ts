@@ -1,10 +1,10 @@
 /**
- * OpenClaw `ltm doctor` / `demo` / `connect` 命令（Milestone B：本机接入体验）。
+ * OpenClaw `ms doctor` / `demo` / `connect` 命令（Milestone B：本机接入体验）。
  *
  * 本文件做什么：让产品开发者在 10 分钟内启动、诊断并接入一个 OpenClaw adapter。
- * - `ltm doctor [dir]`：逐项体检（config / DB / embedding / model / 磁盘 / manifest），区分 ok/warning/fatal。
- * - `ltm demo [dir]`：写入单 appId 样本工作上下文并演示 context/lookup 闭环。
- * - `ltm connect [appId]`：输出可复制的接入信息（server URL / secret / scope 示例 / curl）。
+ * - `ms doctor [dir]`：逐项体检（config / DB / embedding / model / 磁盘 / manifest），区分 ok/warning/fatal。
+ * - `ms demo [dir]`：写入单 appId 样本工作上下文并演示 context/lookup 闭环。
+ * - `ms connect [appId]`：输出可复制的接入信息（server URL / secret / scope 示例 / curl）。
  *
  * 核心流程：
  * 1. 每个检查项做成独立纯函数（checkXxx），返回 { name, status, message }，便于单测。
@@ -144,7 +144,7 @@ export function checkManifest(dir: string): CheckResult {
   try {
     const manifest = readManifest(target);
     if (!manifest) {
-      return { name, status: "info", message: `未初始化，可运行 \`ltm init\` 创建 ${MANIFEST_FILENAME}` };
+      return { name, status: "info", message: `未初始化，可运行 \`ms init\` 创建 ${MANIFEST_FILENAME}` };
     }
     return { name, status: "ok", message: `manifest 合法（project=${manifest.projectId}）` };
   } catch (error) {
@@ -191,7 +191,7 @@ const DEMO_MEMORIES: Array<{ kind: string; semanticType: string; text: string }>
 ];
 
 async function runDemo(dir: string, deps: DoctorCliDeps): Promise<void> {
-  console.log("Memory Autodb Demo（单 appId 样本）");
+  console.log("Mengshu Demo（单 appId 样本）");
   const manifest = readManifest(dir);
   const scope: MemoryScope = manifest
     ? manifestToScope(manifest)
@@ -290,7 +290,7 @@ async function runDoctor(dir: string, deps: DoctorCliDeps): Promise<void> {
     checkManifest(dir),
   ];
 
-  console.log("Memory Autodb Doctor");
+  console.log("Mengshu Doctor");
   for (const result of results) {
     console.log(`[${result.status}] ${result.name}: ${result.message}`);
   }
@@ -307,7 +307,7 @@ async function runDoctor(dir: string, deps: DoctorCliDeps): Promise<void> {
   }
 }
 
-/** 注册 doctor / demo / connect 子命令到父 `ltm` 命令。 */
+/** 注册 doctor / demo / connect 子命令到父 `ms` 命令。 */
 export function registerDoctorCliCommands(memory: CommanderLike, deps: DoctorCliDeps): void {
   memory
     .command("doctor [dir]")

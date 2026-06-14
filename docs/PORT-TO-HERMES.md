@@ -8,13 +8,13 @@
 
 ### 1.1 现状
 
-- **OpenClaw** 已有成熟的 `memory-autodb` 插件（TypeScript），支持 LanceDB / PostgreSQL / Supabase 三种后端，具备自动捕获、自动召回、目录扫描、知识库路由等能力
+- **OpenClaw** 已有成熟的 `mengshu` 插件（TypeScript），支持 LanceDB / PostgreSQL / Supabase 三种后端，具备自动捕获、自动召回、目录扫描、知识库路由等能力
 - **Hermes Agent** 已有 `MemoryProvider` 插件接口（Python ABC），支持 holographic（SQLite）、mem0、retaindb 等外部 Provider
 - 两个系统的记忆数据**完全独立**，无法互通
 
 ### 1.2 目标
 
-将 memory-autodb 的核心能力移植为 Hermes 的 `autodb` 记忆插件，使 Hermes 拥有：
+将 mengshu 的核心能力移植为 Hermes 的 `autodb` 记忆插件，使 Hermes 拥有：
 
 1. **向量语义记忆** — 基于 Embedding 的存储与召回
 2. **多后端支持** — LanceDB（本地零配置）+ PostgreSQL + Supabase
@@ -262,7 +262,7 @@ autodb:
 
 ### 6.2 兼容 OpenClaw 配置
 
-插件自动检测 `~/.openclaw/conf/plugins.json` 中 `memory-lancedb` / `memory-autodb` 配置，如 Hermes config.yaml 未配置则 fallback 读取。
+插件自动检测 `~/.openclaw/conf/plugins.json` 中 `memory-lancedb` / `mengshu` 配置，如 Hermes config.yaml 未配置则 fallback 读取。
 
 ---
 

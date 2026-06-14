@@ -21,7 +21,7 @@
 | 去重/降级/过期完全缺失（M-0 五项空白） | **代码部分已实现**：`ingest/pipeline.ts` contentHash 去重、`lifecycle/retention.ts` TTL、`MemoryLifecycleStatus` 状态机、候选 30 天淘汰 | M-0 改为"补设计文档 + 对齐代码 + 打通 Console"，工作量下调 |
 | `MemoryService` 方法是 storeMemory/getMemory/searchMemories | 实际是 `storeMemory/recall/buildContext/delete/health` | 文档术语校正 |
 | Agent context 缺 telemetry | **已有** warnings/telemetry/freshness，仅缺 filtered | 快路径增强范围缩小到补 filtered + 枚举化 |
-| 默认库路径 `~/.openclaw/memory/autodb` | 实际 `~/.openclaw/memory/lancedb` | 基目录决策修正，不引入新基目录 |
+| 默认库路径 `~/.mengshu/lancedb` | 实际 `~/.openclaw/memory/lancedb` | 基目录决策修正，不引入新基目录 |
 | extractor 可能是 LLM-based | 是**确定性启发式**（`HeuristicTypeExtractor`），LLM 仅接口 | 明确 v0.x 启发式优先 |
 | tree/graph 需判断是否持久化 | 均为 **in-memory baseline，无持久化** | v0.x 明确保持 in-memory + export |
 
@@ -58,11 +58,11 @@
 
 | 编号 | 问题 | 影响 | 建议 |
 |------|------|------|------|
-| POS-1 | 第 3 节"典型使用场景"列出 10 个，但**所有场景**都假设用户已经熟悉 `ltm init` / `memory_session_commit` 等命令。缺一条"用户第一次接触产品"的入门场景。 | 新接入产品的开发者难以判断"我应该先从哪一条接入"。 | 在第 3 节顶部加一句"v0.x 默认入口场景：开发者通过 `ltm init` + OpenClaw adapter 接入"。 |
+| POS-1 | 第 3 节"典型使用场景"列出 10 个，但**所有场景**都假设用户已经熟悉 `ms init` / `memory_session_commit` 等命令。缺一条"用户第一次接触产品"的入门场景。 | 新接入产品的开发者难以判断"我应该先从哪一条接入"。 | 在第 3 节顶部加一句"v0.x 默认入口场景：开发者通过 `ms init` + OpenClaw adapter 接入"。 |
 | POS-2 | 第 6 节"和 OpenClaw 的关系"只声明 OpenClaw 是首批接入方，但没说明**是否唯一接入方**、其他接入方何时考虑、Local server 是否必须？ | 给"Console / Local server / SDK"三条线的优先级留下歧义。 | 增加一段"v0.x 默认主接入：OpenClaw adapter；Local server 在 Milestone B 后启用；SDK/MCP/REST 已并行支持但不作为单独发布渠道"。 |
 | POS-3 | 第 7 节"成功标准"8 条，**全部为定性描述**，无一可测。 | 后续 quick eval 无法直接对应到这些标准，导致成功标准只能在事后解释。 | 至少为 1/4/6/7/8 条配上量化指标：例如"context_fast P95 < 200ms / 跨 appId 召回成功率 ≥ 80% / private 误注入率 = 0"。 |
 | POS-4 | 缺竞品差异化矩阵。文档已经在 `docs/03-architecture/open-source-memory-competitor-research.md` 存在，但定位文档没有引用。 | 读者无法在一份文档内理解"为什么不直接用 mem0/Zep"。 | 在第 5 节后增加"差异化要点"小节，引用竞品研究文档，列出 3-5 行核心差异。 |
-| POS-5 | 第 4 节 Project Memory Workspace **没有定义 project identity 的来源**：是 contentHash(目录路径)、还是用户输入的项目名、还是 git remote URL？ | 直接影响"目录移动后能否保留 project identity"这一关键诉求。 | 明确 identity 优先级：用户显式名 > git remote > contentHash(absolute path)，并落到 `.memory-autodb.json` schema。 |
+| POS-5 | 第 4 节 Project Memory Workspace **没有定义 project identity 的来源**：是 contentHash(目录路径)、还是用户输入的项目名、还是 git remote URL？ | 直接影响"目录移动后能否保留 project identity"这一关键诉求。 | 明确 identity 优先级：用户显式名 > git remote > contentHash(absolute path)，并落到 `.mengshu.json` schema。 |
 
 ---
 
@@ -77,7 +77,7 @@
 **强项**：表格对齐当前模块，省去了重复评估。
 
 **问题**：
-- 表中"Project Memory Workspace"、`sourceRoots[]`、`manifest.json`、`ltm init` 等**当前代码不存在**，但表格是"当前代码基线"，应明确把"新建"项分离为"目标新建"列，否则会让读者误以为已经实现。
+- 表中"Project Memory Workspace"、`sourceRoots[]`、`manifest.json`、`ms init` 等**当前代码不存在**，但表格是"当前代码基线"，应明确把"新建"项分离为"目标新建"列，否则会让读者误以为已经实现。
 - `core/scope.ts` 标"已有多维 scope，但产品级 app/workspace 语义需要强化"——这里"workspaceId"在当前代码中**实际不存在**（已有 `tenantId/appId/userId/projectId/agentId/namespace`，无 `workspaceId`），应明确"workspaceId 为新增字段"。
 
 **建议**：把第 2 节表格分两栏：`已实现` / `本迭代新建/扩展`，避免基线和目标混淆。
@@ -148,8 +148,8 @@
 **问题**：
 | 编号 | 问题 | 建议 |
 |------|------|------|
-| PMW-1 | "在用户本地全局库创建 `~/.memory-autodb/projects/<project-id>/manifest.json`"——和当前代码 `dbPath` 默认 `~/.openclaw/memory/autodb` **路径不一致**。 | 统一基目录：建议 `~/.memory-autodb/`（产品名）作为新基目录，`~/.openclaw/memory/` 保留 legacy 兼容；同时在 `ltm migrate` 中提供迁移路径。 |
-| PMW-2 | `.memory-autodb.json` schema **未定义**。文档说"轻量指针"，但是否包含 projectId / sourceRoots / ingestPolicy 不清楚。 | 在 §5.2.1 末尾给出 minimum schema： `{projectId, projectName?, createdAt, sourceRoots: [{path, role, include, exclude}], ingestPolicy?}`。 |
+| PMW-1 | "在用户本地全局库创建 `~/.mengshu/projects/<project-id>/manifest.json`"——和当前代码 `dbPath` 默认 `~/.mengshu/lancedb` **路径不一致**。 | 统一基目录：建议 `~/.mengshu/`（产品名）作为新基目录，`~/.openclaw/memory/` 保留 legacy 兼容；同时在 `ms migrate` 中提供迁移路径。 |
+| PMW-2 | `.mengshu.json` schema **未定义**。文档说"轻量指针"，但是否包含 projectId / sourceRoots / ingestPolicy 不清楚。 | 在 §5.2.1 末尾给出 minimum schema： `{projectId, projectName?, createdAt, sourceRoots: [{path, role, include, exclude}], ingestPolicy?}`。 |
 | PMW-3 | "文件移动但 contentHash 不变时不重复生成长期记忆"是 Milestone A 验收第 3 条，但**未说明 path provenance 如何更新**。 | 明确 Document 表保留 `pathHistory: [{path, observedAt}]`，evidence 引用最新 path。 |
 | PMW-4 | watch 命令未指定**触发频率**和**批量大小**。本地大目录（>10k 文件）的初次扫描可能阻塞 server。 | 明确 v0.x 限制："首次 index 单次最多处理 5000 文件，超出走 background job 分批"。 |
 | PMW-5 | source root role 列出 6 种（project_root/docs/notes/assets/external_reference/generated_output），但**没说明 generated_output 的默认是排除还是包含**。后者会污染长期记忆。 | 明确默认 `generated_output` 在 ingest 中**排除**，需用户显式 opt-in。 |
@@ -171,14 +171,14 @@
 **强项**：12 个新增 CLI 命令覆盖完整。
 
 **问题**：
-- `ltm doctor` 输出示例只 5 行，**实际 doctor 应该覆盖 10+ 检查项**：embedding API key 可达性、Supabase 连接（如启用）、磁盘空间、scope policy 加载、最近一次 refresh 时间、failed job 数量、candidate backlog 大小、Console 静态资源完整性、tsc 类型一致性、迁移状态。
-- `ltm connect openclaw` 未说明**如何处理已有 OpenClaw 配置**：覆盖、合并、提示？
-- 缺一个 `ltm uninstall` / `ltm reset` 命令——用户体验关键，本地数据销毁是隐私要求。
+- `ms doctor` 输出示例只 5 行，**实际 doctor 应该覆盖 10+ 检查项**：embedding API key 可达性、Supabase 连接（如启用）、磁盘空间、scope policy 加载、最近一次 refresh 时间、failed job 数量、candidate backlog 大小、Console 静态资源完整性、tsc 类型一致性、迁移状态。
+- `ms connect openclaw` 未说明**如何处理已有 OpenClaw 配置**：覆盖、合并、提示？
+- 缺一个 `ms uninstall` / `ms reset` 命令——用户体验关键，本地数据销毁是隐私要求。
 
 **建议**：
 1. doctor 输出按 `[ok|warn|fatal]` 分级，至少 10 项。
 2. connect 命令默认**不覆盖**，使用 `--force` 显式覆盖。
-3. 增加 `ltm reset --project <id>` 用于销毁 project workspace 数据。
+3. 增加 `ms reset --project <id>` 用于销毁 project workspace 数据。
 
 ### 3.10 Console 最小可用治理闭环（第 5.5 节）
 
@@ -214,9 +214,9 @@
 **建议**：
 | 套件 | 建议数量 | 通过门槛 |
 |------|----------|----------|
-| memory-autodb-v0.1 | 30+ | recall@5 ≥ baseline + 5pt |
-| memory-autodb-cross-product | 30+ | cross-app recall ≥ 80%，无 P1 case 退化 |
-| memory-autodb-safety | 40+ | private/revoked 误注入 = 0（硬门槛） |
+| mengshu-v0.1 | 30+ | recall@5 ≥ baseline + 5pt |
+| mengshu-cross-product | 30+ | cross-app recall ≥ 80%，无 P1 case 退化 |
+| mengshu-safety | 40+ | private/revoked 误注入 = 0（硬门槛） |
 
 ---
 
@@ -224,7 +224,7 @@
 
 | 编号 | 一致性问题 | 修复建议 |
 |------|------------|----------|
-| CONS-1 | 定位文档第 4 节"项目目录只保存轻量 `.memory-autodb.json` 指针"与规划文档第 5.2.1"在用户本地全局库创建 `~/.memory-autodb/projects/<project-id>/manifest.json`"职责划分一致，但**两处对 schema 的描述不同**。 | 把 schema 写在规划文档（实现层），定位文档只引用。 |
+| CONS-1 | 定位文档第 4 节"项目目录只保存轻量 `.mengshu.json` 指针"与规划文档第 5.2.1"在用户本地全局库创建 `~/.mengshu/projects/<project-id>/manifest.json`"职责划分一致，但**两处对 schema 的描述不同**。 | 把 schema 写在规划文档（实现层），定位文档只引用。 |
 | CONS-2 | 定位文档第 6 节列出 OpenClaw adapter / MemoryService / Local server / Console 四层，但**规划文档的 Milestone B "本机接入体验"涉及 Local server 启动，定位文档却把 Local server 标为"演进形态"**。 | 统一表述：v0.x 的 Local server 等同于 daemon（已有 `server/daemon.ts`），不是新增 SaaS。 |
 | CONS-3 | 定位文档第 7 节成功标准第 7 条"private、revoked、stale、conflict 记忆不会误注入"，与规划文档 §5.7 安全 suite 名称对齐良好；但**conflict 在规划文档中无任何处理流程定义**。 | 规划文档 §5.6 增加"conflict candidate 的处理：默认进入 candidate 区，需用户决议"。 |
 | CONS-4 | 两份文档都使用"工作上下文"、"用户工作上下文"、"工作记忆"三种说法。 | 在产品定位文档新增术语表："Working Context = 用户工作上下文 = 工作记忆（统一名）"。 |
@@ -247,7 +247,7 @@
 | `scanner/*` | 文件扫描器、markdown processor | 一致；但**与 Project Workspace 的 source root 模型未打通** | 高：需要 scanner 改造支持 sourceRoots 概念，工作量被低估 |
 | `ingest/*` | document/chunk/job/audit baseline | 一致 | 低 |
 | `tree/*`、`graph/*` | in-memory baseline | 一致 | 低（本迭代不持久化） |
-| `ltm` CLI | serve/status/health/migrate + legacy | 一致 | 中：新增 12 个命令是大量工作 |
+| `ms` CLI | serve/status/health/migrate + legacy | 一致 | 中：新增 12 个命令是大量工作 |
 
 **核心结论**：
 1. **Scope 增加 `workspaceId` 字段**需要数据迁移路径，规划文档未提及。
@@ -272,15 +272,15 @@
 
 | 风险编号 | 风险 | 严重性 | 文档是否覆盖 | 处理建议 |
 |----------|------|--------|--------------|----------|
-| RISK-1 | 本地数据库损坏（LanceDB 文件断电、磁盘满） | 高 | 否 | 增加 `ltm doctor` 检查 + `ltm backup`/`ltm restore` 命令；evidence 写入采用 append-only |
-| RISK-2 | 跨 `appId` 复用的隐私边界——产品 A 收集的偏好被产品 B 直接用，是否符合用户预期？ | 高 | 部分（仅提到"private 不放宽"） | 加 ADR 记录"复用是默认 opt-in 还是 opt-out"，并在 `ltm init` 时让用户选择 |
+| RISK-1 | 本地数据库损坏（LanceDB 文件断电、磁盘满） | 高 | 否 | 增加 `ms doctor` 检查 + `ms backup`/`ms restore` 命令；evidence 写入采用 append-only |
+| RISK-2 | 跨 `appId` 复用的隐私边界——产品 A 收集的偏好被产品 B 直接用，是否符合用户预期？ | 高 | 部分（仅提到"private 不放宽"） | 加 ADR 记录"复用是默认 opt-in 还是 opt-out"，并在 `ms init` 时让用户选择 |
 | RISK-3 | scope 推导错误（如 OpenClaw adapter 把不同用户错认为同一 userId） | 高 | 否 | 在 `MemoryService` 增加 scope 强制校验，错误时拒写并写 audit |
 | RISK-4 | embedding API 不可用时 `context_fast` 是否降级？ | 中 | 否 | 明确降级策略：BM25 优先 + 缓存 SlotSnapshot 兜底 |
 | RISK-5 | Project Workspace 中 source root 失效（外部参考目录被删除） | 中 | 部分（提到 deleted/stale） | refresh 时增加"orphan source root"告警 |
 | RISK-6 | candidate 自动审核长期未处理导致 backlog 爆炸 | 中 | 部分（提到 30 天清理） | Console Overview 增加 backlog 阈值告警 |
 | RISK-7 | OpenClaw adapter 接口稳定性（OpenClaw 主版本升级时） | 中 | 否 | adapter 层增加版本协议 + 兼容矩阵 |
-| RISK-8 | `ltm watch` 在 macOS Spotlight 索引或 Linux inotify limit 下表现 | 中 | 否 | doctor 检查 inotify limit；超限提示用户 |
-| RISK-9 | 评测黄金集本身的质量——`memory-autodb-v0.1` 由谁标注，标注一致性如何？ | 中 | 否 | 黄金集增加 `annotator/reviewedAt/version` 元数据 |
+| RISK-8 | `ms watch` 在 macOS Spotlight 索引或 Linux inotify limit 下表现 | 中 | 否 | doctor 检查 inotify limit；超限提示用户 |
+| RISK-9 | 评测黄金集本身的质量——`mengshu-v0.1` 由谁标注，标注一致性如何？ | 中 | 否 | 黄金集增加 `annotator/reviewedAt/version` 元数据 |
 | RISK-10 | 5type 与现实记忆类型的不匹配（用户产生大量"既非 profile 也非 rule"的边缘记忆） | 低 | 部分（已有 lookup-only 兜底） | 加 telemetry：lookup-only 占比超过 30% 时告警 |
 
 ---
@@ -292,7 +292,7 @@
 | Milestone | 当前验收 | 建议追加量化门槛 |
 |-----------|----------|------------------|
 | A | 10 条定性 | • `context_fast` P95 < 250ms（本地）<br>• cross-app profile 召回率 ≥ 80%<br>• scope 推导错误率 = 0（contract test） |
-| B | 4 条定性 | • `ltm init -> context` 端到端 < 5 分钟（中等目录）<br>• doctor 误报率 < 10%（人工 review 30 个样本） |
+| B | 4 条定性 | • `ms init -> context` 端到端 < 5 分钟（中等目录）<br>• doctor 误报率 < 10%（人工 review 30 个样本） |
 | C | 4 条定性 | • candidate approve 后 ≤ 1 个 context_fast 周期内可用<br>• 批量 approve 100 条耗时 < 3 秒 |
 | D | 4 条定性 | • cross-product suite recall@5 ≥ 75%<br>• safety suite 误注入率 = 0<br>• `memory_lookup` P95 < 500ms |
 
@@ -319,7 +319,7 @@
 | **P0** | **M-0** | **补充"记忆提取管线"、"记忆树构建"、"去重与冲突"、"降级策略"、"过期策略"五个核心流程的完整文档** | §3.6、ARCH-0-1~5 |
 | P0 | M-1 | 把 Milestone A 拆成 A1（scope policy + workspaceId 迁移）、A2（Project Workspace + source roots）、A3（快路径增强）三段串行，避免单 milestone 工程量爆炸 | §6 |
 | P0 | M-2 | 提前落 quick eval 黄金集（30 条 v0.1 + 30 条 cross-product），作为 A1 验收门槛 | §5.7、§6 |
-| P0 | M-3 | 统一基目录到 `~/.memory-autodb/`，并在 `ltm migrate` 中提供 v2.1 → v0.x 的数据迁移 | §5.2.1、PMW-1 |
+| P0 | M-3 | 统一基目录到 `~/.mengshu/`，并在 `ms migrate` 中提供 v2.1 → v0.x 的数据迁移 | §5.2.1、PMW-1 |
 | P0 | M-4 | 明确 `workspaceId ⊇ projectId` 层级关系并写入 scope policy 文档 | §5.1、§6 |
 | P1 | M-5 | 给 §5.2 召回评分函数一个 v0.x 默认权重（ADR） | §5.2、ARCH-2 |
 | P1 | M-6 | `AgentContextFastResult` schema 强约束：枚举化 warning code、必填 telemetry.tokenEstimate、限定 evidenceIds 上限 | §5.3、API-1/2/3 |
@@ -327,7 +327,7 @@
 | P1 | M-8 | 增加 RISK-1（备份）、RISK-2（复用边界 opt-in）、RISK-3（scope 校验）三项处理流程 | §7 |
 | P1 | M-9 | 增加 Lifecycle 状态机图：active → stale → archived → expired，并定义每个状态的可见性边界 | §3.6、ARCH-0-4 |
 | P1 | M-10 | 增加 TTL 策略表：不同 kind 的默认 TTL、计时起点、过期后处理 | §3.6、ARCH-0-5 |
-| P2 | M-11 | `.memory-autodb.json` schema 显式定义并写入 §5.2.1 | §5.2.1、PMW-2 |
+| P2 | M-11 | `.mengshu.json` schema 显式定义并写入 §5.2.1 | §5.2.1、PMW-2 |
 | P2 | M-12 | 给每个 Milestone 验收追加量化门槛（P95、召回率、误注入率） | §6 |
 | P2 | M-13 | 明确启发式 extractor 规则集 + LLM extractor 引入时机 | §3.11 |
 | P2 | M-14 | 增加 Console "去重冲突治理"页面设计草案（或合并到 Candidates 页） | §3.6、ARCH-0-3 |
@@ -360,4 +360,4 @@
 - 评测方案：[memory-evaluation-plan.md](../../07-test/memory-evaluation-plan.md)
 - 竞品研究：[open-source-memory-competitor-research.md](../../03-architecture/open-source-memory-competitor-research.md)
 - 中间件架构：[memory-middleware-architecture.md](../../03-architecture/memory-middleware-architecture.md)
-- 深度优化架构：[memory-autodb-deep-optimization-architecture.md](../../03-architecture/memory-autodb-deep-optimization-architecture.md)
+- 深度优化架构：[mengshu-deep-optimization-architecture.md](../../03-architecture/mengshu-deep-optimization-architecture.md)

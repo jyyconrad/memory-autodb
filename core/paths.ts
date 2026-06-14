@@ -1,13 +1,13 @@
 /**
- * memory-autodb 全局目录与路径解析（global config home）。
+ * mengshu 全局目录与路径解析（global config home）。
  *
- * 本文件做什么：把 `~/.memory-autodb/` 全局目录的所有派生路径（config.json、.env、
+ * 本文件做什么：把 `~/.mengshu/` 全局目录的所有派生路径（config.json、.env、
  * registry.json、memory/、projects/<projectId>/...）集中到一组纯函数里，避免
- * config.ts、scripts/memory-autodb-mcp.ts、manifest.ts 等模块各自拼路径、各自做
+ * config.ts、scripts/mengshu-mcp.ts、manifest.ts 等模块各自拼路径、各自做
  * `~` 展开导致漂移。
  *
  * 核心流程：
- * 1. resolveHomeDir：解析全局目录，按 `MEMORY_AUTODB_HOME` > 升级方案默认 `~/.memory-autodb/`
+ * 1. resolveHomeDir：解析全局目录，按 `MENGSHU_HOME` > 升级方案默认 `~/.mengshu/`
  *    顺序决定；旧 `~/.openclaw/` 在调用方按需做兼容回退。
  * 2. expandHome：把 `~`/`~/...` 展开为绝对路径，统一替换原先 scripts 内联实现。
  * 3. resolveConfigPath/EnvPath/RegistryPath/ProjectsDir/ProjectDir：相对 home 派生。
@@ -23,7 +23,7 @@ import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 
 /** 默认全局目录名（相对 home，对应升级方案 §2 目标目录结构）。 */
-export const DEFAULT_HOME_DIRNAME = ".memory-autodb";
+export const DEFAULT_HOME_DIRNAME = ".mengshu";
 
 /** 旧路径，仅用于兼容回退场景中识别。 */
 export const LEGACY_HOME_DIRNAME = ".openclaw";
@@ -62,13 +62,13 @@ export function expandHome(input: string, home: string = homedir()): string {
 
 /**
  * 解析全局 home 目录绝对路径。
- * 优先级：options.homeDir > env.MEMORY_AUTODB_HOME > `<home>/.memory-autodb`。
+ * 优先级：options.homeDir > env.MENGSHU_HOME > `<home>/.mengshu`。
  * 不存在性检查由调用方处理；这里只负责把字符串归一化为绝对路径。
  */
 export function resolveHomeDir(options: HomePathOptions = {}): string {
   const home = options.home ?? homedir();
   const env = options.env ?? process.env;
-  const explicit = options.homeDir ?? env.MEMORY_AUTODB_HOME;
+  const explicit = options.homeDir ?? env.MENGSHU_HOME;
   if (explicit && explicit.trim().length > 0) {
     const expanded = expandHome(explicit.trim(), home);
     return isAbsolute(expanded) ? expanded : resolve(home, expanded);
@@ -102,7 +102,7 @@ export function resolveProjectsDir(options: HomePathOptions = {}): string {
   return join(resolveHomeDir(options), PROJECTS_DIRNAME);
 }
 
-/** 单个 project 在全局目录中的根路径：`~/.memory-autodb/projects/<projectId>/`。 */
+/** 单个 project 在全局目录中的根路径：`~/.mengshu/projects/<projectId>/`。 */
 export function resolveProjectDir(projectId: string, options: HomePathOptions = {}): string {
   if (!projectId || projectId.trim().length === 0) {
     throw new Error("resolveProjectDir 需要非空 projectId");
@@ -115,7 +115,7 @@ export function resolveProjectManifestPath(projectId: string, options: HomePathO
   return join(resolveProjectDir(projectId, options), "manifest.json");
 }
 
-/** 默认 LanceDB 路径：`~/.memory-autodb/memory/lancedb/`。 */
+/** 默认 LanceDB 路径：`~/.mengshu/memory/lancedb/`。 */
 export function resolveDefaultLanceDbPath(options: HomePathOptions = {}): string {
   return join(resolveHomeDir(options), MEMORY_DIRNAME, LANCEDB_DIRNAME);
 }

@@ -161,7 +161,7 @@ ON summary_nodes(scope_key, tree_type, tree_key, level, sealed_at DESC);
 当前迁移命令：
 
 ```bash
-ltm migrate --to-schema v4 --dry-run
+ms migrate --to-schema v4 --dry-run
 ```
 
 该命令当前提供迁移估算，不执行真实数据迁移。真实迁移需要按表、namespace、scope 分批执行，并保留旧表回滚窗口。

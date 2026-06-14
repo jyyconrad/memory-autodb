@@ -1,5 +1,5 @@
 /**
- * OpenClaw `ltm` server CLI commands.
+ * OpenClaw `ms` server CLI commands.
  *
  * 这里只注册 serve/status/health 三个中间件入口；既有 stats/search/scan 等命令
  * 仍保留在 index.ts，避免一次性迁移全部 CLI。

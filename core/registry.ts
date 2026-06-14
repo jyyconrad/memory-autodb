@@ -1,9 +1,9 @@
 /**
  * 本机项目快速索引（registry.json）读写。
  *
- * 本文件做什么：维护 `~/.memory-autodb/registry.json`，记录本机所有项目的轻量元
+ * 本文件做什么：维护 `~/.mengshu/registry.json`，记录本机所有项目的轻量元
  * 信息（最近根目录、最近打开时间、显示名等），不替代每个项目目录下的
- * `~/.memory-autodb/projects/<projectId>/manifest.json`（后者是长期 identity 真源）。
+ * `~/.mengshu/projects/<projectId>/manifest.json`（后者是长期 identity 真源）。
  *
  * 核心流程：
  * 1. readRegistry：文件不存在返回空骨架，损坏抛带路径的错误便于排查。

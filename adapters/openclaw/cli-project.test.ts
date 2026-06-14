@@ -3,7 +3,7 @@
  *
  * 用 fake CommanderLike 捕获注册的命令名与 action，验证：
  * 1. 注册 init 与 project（status/context/lookup）命令。
- * 2. init action 能在临时目录创建 .memory-autodb.json，并打印 workspace/project id。
+ * 2. init action 能在临时目录创建 .mengshu.json，并打印 workspace/project id。
  * 3. init 幂等：已存在且无 --force 时不覆盖，保留原 id；--force 时覆盖。
  * 4. project status 读 manifest 打印 identity / scope / 复用策略；无 manifest 时提示 init。
  * 5. project lookup 基于 manifest scope 调 service.recall 并打印命中。
@@ -66,8 +66,8 @@ let logs: string[];
 let originalLog: typeof console.log;
 
 beforeEach(() => {
-  workDir = mkdtempSync(join(tmpdir(), "memory-autodb-cli-"));
-  testHome = mkdtempSync(join(tmpdir(), "memory-autodb-home-"));
+  workDir = mkdtempSync(join(tmpdir(), "mengshu-cli-"));
+  testHome = mkdtempSync(join(tmpdir(), "mengshu-home-"));
   logs = [];
   originalLog = console.log;
   console.log = (message?: unknown) => {
@@ -83,11 +83,11 @@ afterEach(() => {
 
 describe("registerProjectCliCommands 注册", () => {
   test("注册 init 与 project 子命令族", () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, { homePathOptions: { homeDir: testHome } });
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, { homePathOptions: { homeDir: testHome } });
 
-    expect(ltm.find("init")).toBeDefined();
-    const project = ltm.find("project");
+    expect(ms.find("init")).toBeDefined();
+    const project = ms.find("project");
     expect(project).toBeDefined();
     expect(project?.subcommands.map((c) => c.name.split(" ")[0])).toEqual([
       "status",
@@ -97,12 +97,12 @@ describe("registerProjectCliCommands 注册", () => {
   });
 });
 
-describe("ltm init", () => {
+describe("ms init", () => {
   test("创建 manifest 文件并打印 workspace/project id", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, { homePathOptions: { homeDir: testHome } });
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, { homePathOptions: { homeDir: testHome } });
 
-    await ltm.find("init")?.actionHandler?.(workDir, { userId: "user-1" });
+    await ms.find("init")?.actionHandler?.(workDir, { userId: "user-1" });
 
     expect(existsSync(join(workDir, MANIFEST_FILENAME))).toBe(true);
     const manifest = readProjectManifest(workDir, { homeDir: testHome });
@@ -112,14 +112,14 @@ describe("ltm init", () => {
   });
 
   test("已存在且无 --force 时不覆盖，保留原 id", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, { homePathOptions: { homeDir: testHome } });
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, { homePathOptions: { homeDir: testHome } });
 
-    await ltm.find("init")?.actionHandler?.(workDir, { projectId: "proj-keep" });
+    await ms.find("init")?.actionHandler?.(workDir, { projectId: "proj-keep" });
     const before = readProjectManifest(workDir, { homeDir: testHome });
     logs.length = 0;
 
-    await ltm.find("init")?.actionHandler?.(workDir, { projectId: "proj-other" });
+    await ms.find("init")?.actionHandler?.(workDir, { projectId: "proj-other" });
     const after = readProjectManifest(workDir, { homeDir: testHome });
 
     expect(after?.projectId).toBe("proj-keep");
@@ -128,28 +128,28 @@ describe("ltm init", () => {
   });
 
   test("--force 覆盖既有 manifest", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, { homePathOptions: { homeDir: testHome } });
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, { homePathOptions: { homeDir: testHome } });
 
-    await ltm.find("init")?.actionHandler?.(workDir, { projectId: "proj-keep" });
-    await ltm.find("init")?.actionHandler?.(workDir, { projectId: "proj-new", force: true });
+    await ms.find("init")?.actionHandler?.(workDir, { projectId: "proj-keep" });
+    await ms.find("init")?.actionHandler?.(workDir, { projectId: "proj-new", force: true });
 
     expect(readProjectManifest(workDir, { homeDir: testHome })?.projectId).toBe("proj-new");
   });
 
   test("显式 --visibility 写入 manifest", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, { homePathOptions: { homeDir: testHome } });
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, { homePathOptions: { homeDir: testHome } });
 
-    await ltm.find("init")?.actionHandler?.(workDir, { visibility: "private" });
+    await ms.find("init")?.actionHandler?.(workDir, { visibility: "private" });
     expect(readProjectManifest(workDir, { homeDir: testHome })?.defaultVisibility).toBe("private");
   });
 
   test("init 后 registry.json 包含该 projectId", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, { homePathOptions: { homeDir: testHome } });
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, { homePathOptions: { homeDir: testHome } });
 
-    await ltm.find("init")?.actionHandler?.(workDir, { projectId: "proj-reg" });
+    await ms.find("init")?.actionHandler?.(workDir, { projectId: "proj-reg" });
 
     const registry = readRegistry({ homeDir: testHome });
     expect(registry.projects["proj-reg"]).toBeDefined();
@@ -157,10 +157,10 @@ describe("ltm init", () => {
   });
 
   test("init 后全局目录有 projects/<projectId>/manifest.json", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, { homePathOptions: { homeDir: testHome } });
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, { homePathOptions: { homeDir: testHome } });
 
-    await ltm.find("init")?.actionHandler?.(workDir, { projectId: "proj-global" });
+    await ms.find("init")?.actionHandler?.(workDir, { projectId: "proj-global" });
 
     const globalManifestPath = join(testHome, "projects", "proj-global", "manifest.json");
     expect(existsSync(globalManifestPath)).toBe(true);
@@ -170,17 +170,17 @@ describe("ltm init", () => {
   });
 
   test("第二次 init（不带 --force）touch lastOpenedAt", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, { homePathOptions: { homeDir: testHome } });
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, { homePathOptions: { homeDir: testHome } });
 
-    await ltm.find("init")?.actionHandler?.(workDir, { projectId: "proj-touch" });
+    await ms.find("init")?.actionHandler?.(workDir, { projectId: "proj-touch" });
     const registry1 = readRegistry({ homeDir: testHome });
     const firstOpened = registry1.projects["proj-touch"].lastOpenedAt;
 
     // 等待至少 1ms
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    await ltm.find("init")?.actionHandler?.(workDir, { projectId: "proj-touch" });
+    await ms.find("init")?.actionHandler?.(workDir, { projectId: "proj-touch" });
     const registry2 = readRegistry({ homeDir: testHome });
     const secondOpened = registry2.projects["proj-touch"].lastOpenedAt;
 
@@ -188,18 +188,18 @@ describe("ltm init", () => {
   });
 });
 
-describe("ltm project status", () => {
+describe("ms project status", () => {
   test("读 manifest 打印 identity / scope / 复用策略", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, {
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, {
       getRecordCount: async () => 7,
       homePathOptions: { homeDir: testHome },
     });
 
-    await ltm.find("init")?.actionHandler?.(workDir, { workspaceId: "ws-acme", projectId: "proj-acme" });
+    await ms.find("init")?.actionHandler?.(workDir, { workspaceId: "ws-acme", projectId: "proj-acme" });
     logs.length = 0;
 
-    await ltm.find("project")?.find("status")?.actionHandler?.(workDir, {});
+    await ms.find("project")?.find("status")?.actionHandler?.(workDir, {});
 
     const text = logs.join("\n");
     expect(text).toContain("ws-acme");
@@ -209,22 +209,22 @@ describe("ltm project status", () => {
   });
 
   test("无 manifest 时提示先运行 init", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, { homePathOptions: { homeDir: testHome } });
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, { homePathOptions: { homeDir: testHome } });
 
-    await ltm.find("project")?.find("status")?.actionHandler?.(workDir, {});
+    await ms.find("project")?.find("status")?.actionHandler?.(workDir, {});
     expect(logs.join("\n")).toMatch(/init/);
   });
 
   test("旧 manifest（0.1 完整格式）兼容：status 命令依然能读出", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, { homePathOptions: { homeDir: testHome } });
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, { homePathOptions: { homeDir: testHome } });
 
     // 手工写一个旧格式完整 manifest
     const legacyManifest = createManifest({ dir: workDir, projectId: "proj-legacy" });
     writeManifest(workDir, legacyManifest);
 
-    await ltm.find("project")?.find("status")?.actionHandler?.(workDir, {});
+    await ms.find("project")?.find("status")?.actionHandler?.(workDir, {});
 
     const text = logs.join("\n");
     expect(text).toContain("proj-legacy");
@@ -232,9 +232,9 @@ describe("ltm project status", () => {
   });
 });
 
-describe("ltm project lookup", () => {
+describe("ms project lookup", () => {
   test("基于 manifest scope 调 service.recall 并打印命中", async () => {
-    const ltm = new FakeCommand("ltm");
+    const ms = new FakeCommand("ms");
     const recall = vi.fn(async (_input: { query: string; scope: { projectId: string } }) => ({
       scope: {} as never,
       query: "q",
@@ -246,15 +246,15 @@ describe("ltm project lookup", () => {
         },
       ],
     }));
-    registerProjectCliCommands(ltm as never, {
+    registerProjectCliCommands(ms as never, {
       service: { recall } as never,
       homePathOptions: { homeDir: testHome },
     });
 
-    await ltm.find("init")?.actionHandler?.(workDir, { projectId: "proj-acme" });
+    await ms.find("init")?.actionHandler?.(workDir, { projectId: "proj-acme" });
     logs.length = 0;
 
-    await ltm.find("project")?.find("lookup")?.actionHandler?.("结论", { dir: workDir });
+    await ms.find("project")?.find("lookup")?.actionHandler?.("结论", { dir: workDir });
 
     expect(recall).toHaveBeenCalledTimes(1);
     const callArg = recall.mock.calls[0][0];
@@ -264,45 +264,45 @@ describe("ltm project lookup", () => {
   });
 
   test("无 manifest 时提示先运行 init", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, {
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, {
       service: { recall: vi.fn() } as never,
       homePathOptions: { homeDir: testHome },
     });
 
-    await ltm.find("project")?.find("lookup")?.actionHandler?.("q", { dir: workDir });
+    await ms.find("project")?.find("lookup")?.actionHandler?.("q", { dir: workDir });
     expect(logs.join("\n")).toMatch(/init/);
   });
 });
 
-describe("ltm project context", () => {
+describe("ms project context", () => {
   test("recall 失败（embedding 不可用）时降级提示而非抛错", async () => {
-    const ltm = new FakeCommand("ltm");
+    const ms = new FakeCommand("ms");
     const recall = vi.fn(async () => {
       throw new Error("embedding api key missing");
     });
-    registerProjectCliCommands(ltm as never, {
+    registerProjectCliCommands(ms as never, {
       service: { recall } as never,
       homePathOptions: { homeDir: testHome },
     });
 
-    await ltm.find("init")?.actionHandler?.(workDir, { projectId: "proj-acme" });
+    await ms.find("init")?.actionHandler?.(workDir, { projectId: "proj-acme" });
     logs.length = 0;
 
     await expect(
-      ltm.find("project")?.find("context")?.actionHandler?.(workDir, {}),
+      ms.find("project")?.find("context")?.actionHandler?.(workDir, {}),
     ).resolves.not.toThrow();
     expect(logs.join("\n")).toMatch(/降级|embedding|无法/);
   });
 
   test("无 service 时打印 scope 但提示无法构建上下文", async () => {
-    const ltm = new FakeCommand("ltm");
-    registerProjectCliCommands(ltm as never, { homePathOptions: { homeDir: testHome } });
+    const ms = new FakeCommand("ms");
+    registerProjectCliCommands(ms as never, { homePathOptions: { homeDir: testHome } });
 
-    await ltm.find("init")?.actionHandler?.(workDir, { projectId: "proj-acme" });
+    await ms.find("init")?.actionHandler?.(workDir, { projectId: "proj-acme" });
     logs.length = 0;
 
-    await ltm.find("project")?.find("context")?.actionHandler?.(workDir, {});
+    await ms.find("project")?.find("context")?.actionHandler?.(workDir, {});
     expect(logs.join("\n")).toContain("proj-acme");
   });
 });
