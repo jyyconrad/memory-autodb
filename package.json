@@ -35,6 +35,10 @@
     "@rolldown/binding-linux-x64-gnu": "^1.1.1",
     "@rolldown/binding-win32-x64-msvc": "^1.1.1"
   },
+  "bin": {
+    "ms": "./bin/ms.ts",
+    "mengshu": "./bin/ms.ts"
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
