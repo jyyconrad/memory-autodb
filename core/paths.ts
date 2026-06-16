@@ -35,6 +35,13 @@ export const REGISTRY_FILENAME = "registry.json";
 export const PROJECTS_DIRNAME = "projects";
 export const MEMORY_DIRNAME = "memory";
 export const LANCEDB_DIRNAME = "lancedb";
+/** Agent 历史导入相关目录/文件名（对应方案 §4.2 状态路径）。 */
+export const IMPORTS_DIRNAME = "imports";
+export const AGENT_HISTORY_DIRNAME = "agent-history";
+export const IMPORT_STATE_FILENAME = "state.json";
+/** 单 project 下的子目录（对应方案 §6.4 / §8.5 持久化边界）。 */
+export const PROJECT_AUDIT_DIRNAME = "audit";
+export const PROJECT_TREE_DIRNAME = "tree";
 
 /** 控制路径解析的入参（便于测试注入与多客户端覆盖）。 */
 export interface HomePathOptions {
@@ -118,6 +125,36 @@ export function resolveProjectManifestPath(projectId: string, options: HomePathO
 /** 默认 LanceDB 路径：`~/.mengshu/memory/lancedb/`。 */
 export function resolveDefaultLanceDbPath(options: HomePathOptions = {}): string {
   return join(resolveHomeDir(options), MEMORY_DIRNAME, LANCEDB_DIRNAME);
+}
+
+/** 全局 imports/ 目录：`~/.mengshu/imports/`。 */
+export function resolveImportsDir(options: HomePathOptions = {}): string {
+  return join(resolveHomeDir(options), IMPORTS_DIRNAME);
+}
+
+/** Agent 历史导入状态目录：`~/.mengshu/imports/agent-history/`。 */
+export function resolveAgentHistoryImportDir(options: HomePathOptions = {}): string {
+  return join(resolveImportsDir(options), AGENT_HISTORY_DIRNAME);
+}
+
+/** Agent 历史导入状态文件：`~/.mengshu/imports/agent-history/state.json`（方案 §4.2）。 */
+export function resolveAgentHistoryImportStatePath(options: HomePathOptions = {}): string {
+  return join(resolveAgentHistoryImportDir(options), IMPORT_STATE_FILENAME);
+}
+
+/** 单 project 的 audit 目录：`~/.mengshu/projects/<projectId>/audit/`。 */
+export function resolveProjectAuditDir(projectId: string, options: HomePathOptions = {}): string {
+  return join(resolveProjectDir(projectId, options), PROJECT_AUDIT_DIRNAME);
+}
+
+/** 单 project 的导入审计 jsonl：`~/.mengshu/projects/<projectId>/audit/imports.jsonl`（方案 §4.2）。 */
+export function resolveProjectImportAuditPath(projectId: string, options: HomePathOptions = {}): string {
+  return join(resolveProjectAuditDir(projectId, options), "imports.jsonl");
+}
+
+/** 单 project 的记忆树持久化目录：`~/.mengshu/projects/<projectId>/tree/`（方案 §8.5）。 */
+export function resolveProjectTreeDir(projectId: string, options: HomePathOptions = {}): string {
+  return join(resolveProjectDir(projectId, options), PROJECT_TREE_DIRNAME);
 }
 
 /** 旧 LanceDB 路径：`~/.openclaw/memory/lancedb/`，仅供兼容回退使用。 */
