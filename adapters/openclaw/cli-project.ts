@@ -35,6 +35,7 @@ import {
 import { readRegistry, writeRegistry, upsertProject, touchProjectOpenedAt } from "../../core/registry.js";
 import { resolveProjectManifestPath, type HomePathOptions } from "../../core/paths.js";
 import { isGlobalConfigReady, runInteractiveSetup } from "./cli-setup.js";
+import { registerIngestHistoryCommand } from "./cli-ingest-history.js";
 
 /** project 命令依赖注入。service/getRecordCount 缺省时相关命令降级。 */
 export interface ProjectCliDeps {
@@ -286,6 +287,10 @@ export function registerProjectCliCommands(memory: CommanderLike, deps: ProjectC
       const [query, opts] = args;
       await handleLookup(query, { dir: optString(asRecord(opts).dir) }, deps);
     });
+
+  registerIngestHistoryCommand(project, {
+    cwd: deps.cwd,
+  });
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

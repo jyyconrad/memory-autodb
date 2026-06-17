@@ -29,7 +29,7 @@ ms doctor                       # 配置/连接诊断
 ms why <记忆ID>                  # 评分明细追溯
 ms recall "查询" --explain       # 召回 + importance breakdown
 ms forget <记忆ID>               # 撤回/归档/纠错
-ms import <path>                # 导入 agent history
+ms project ingest-history --from codex --dry-run  # 预览 agent history 导入
 ms project                      # 项目管理
 ms stats / ms search / ms scan / ms serve / ms mcp
 ```
@@ -56,13 +56,15 @@ ms stats / ms search / ms scan / ms serve / ms mcp
 | `routing/` | 路由规则引擎 | `index.ts`、`rules.ts` |
 | `storage/` | 存储抽象层、索引 | `legacy-database-adapter.ts`、`repositories/`、`indexes/` |
 | `feedback/` | 反馈闭环 | `collector.ts`、`in-memory-store.ts` |
-| `adapters/openclaw/` | OpenClaw 插件适配 + CLI 命令 | `hooks.ts`、`tools.ts`、`cli-why.ts`、`cli-recall.ts`、`cli-forget.ts`、`cli-doctor.ts`、`cli-import.ts`、`cli-setup.ts` |
+| `adapters/openclaw/` | OpenClaw 插件适配 + CLI 命令 | `index.ts`、`hooks.ts`、`tools.ts`、`cli-why.ts`、`cli-recall.ts`、`cli-forget.ts`、`cli-doctor.ts`、`cli-ingest-history.ts`、`cli-setup.ts` |
 | `adapters/mcp/` | MCP Server 适配 | `server.ts`、`stdio-server.ts`、`tools.ts` |
-| `api/` | REST API + agent fast path | `agent-fast-path.ts`、`rest/` |
+| `adapters/rest/` | REST API 协议适配 | `router.ts`、`auth.ts`、`types.ts` |
+| `api/` | Agent fast path | `agent-fast-path.ts` |
 | `server/` | 后台 daemon + worker | `daemon.ts`、`workers.ts`、`health.ts` |
 | `console/` | Web Console API | `api.ts`、`web/` |
 | `eval/` | Golden set 评估框架 | `runners/`、`goldens/`、`fixtures/` |
-| `sdk/` | JS SDK 封装 | `js/` |
+| `adapters/sdk/` | JS SDK 封装 | `client.ts`、`types.ts` |
+| `sdk/js/` | 旧 deep import 兼容入口 | `client.ts`、`types.ts` |
 
 ### 4 套评分体系（SCORING_WEIGHTS_V1）
 

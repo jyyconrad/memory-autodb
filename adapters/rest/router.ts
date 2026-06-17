@@ -10,9 +10,12 @@ import type {
   RecallInput,
   StoreMemoryInput,
 } from "../../core/service-types.js";
+import type { MemoryConfig } from "../../config.js";
 import type { GraphQueryInput } from "../../graph/query.js";
 import type { ConsoleCandidatesRequest, ConsoleCandidateReviewRequest, ConsoleLookupRequest } from "../../console/types.js";
 import type { MemoryScope } from "../../core/types.js";
+import { createMengshuRuntime } from "../../runtime.js";
+import type { MengshuRuntime } from "../../runtime.js";
 import { authorizeRestRequest } from "./auth.js";
 import type { RestRequest, RestResponse, RestRouterOptions } from "./types.js";
 import type {
@@ -20,10 +23,32 @@ import type {
   AgentObserveLightRequest,
   AgentLookupRequest,
   AgentSessionCommitRequest,
-} from "../agent-fast-path.js";
+} from "../../api/agent-fast-path.js";
 
 export interface RestRouter {
   handle(request: RestRequest): Promise<RestResponse>;
+}
+
+export interface RestApi {
+  runtime: MengshuRuntime;
+  router: RestRouter;
+}
+
+export function createRestApi(config: MemoryConfig, resolvedDbPath: string): RestApi {
+  const runtime = createMengshuRuntime({
+    config,
+    resolvedDbPath,
+    appId: "rest",
+  });
+  return {
+    runtime,
+    router: createRestRouter({
+      service: runtime.memoryService,
+      console: runtime.consoleApi,
+      agentFastPath: runtime.agentFastPath,
+      server: config.server,
+    }),
+  };
 }
 
 function methodNotAllowed(): RestResponse {

@@ -25,6 +25,17 @@
 | **`ms why <id>`** | **查看记忆评分明细与来源追溯（v1.0.2 P1）** |
 | **`ms recall --explain`** | **召回并显示 importance 4 项 breakdown + filteredReason（v1.0.2 P1）** |
 | **`ms forget <id>`** | **撤回/归档/纠错/回滚合并记忆（v1.0.2 P1）** |
+| **`ms project ingest-history --dry-run`** | **预览 Codex / Claude Code / OpenClaw agent history 导入（只读，不写库）** |
+
+## `ms project ingest-history`
+
+```bash
+ms project ingest-history --from codex --dry-run
+ms project ingest-history --from codex,claude-code --since 90d --dry-run
+ms project ingest-history --from openclaw --source-root /path/to/history --dry-run
+```
+
+当前阶段只支持 `--dry-run`：扫描来源文件、解析 canonical events、统计 session / chunk 预估、脱敏命中和坏行，不调用 embedding，也不写入 MemoryService。`--apply` 会明确提示尚未支持。
 
 ## `ms stats`
 

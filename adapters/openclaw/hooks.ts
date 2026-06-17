@@ -6,12 +6,18 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { MemoryCategory } from "../../config.js";
+import {
+  DEFAULT_CAPTURE_MAX_CHARS,
+  type MemoryCategory,
+} from "../../config.js";
 import type { DataType } from "../../db/types.js";
 import type { MemoryService } from "../../core/service-types.js";
 import type { MemoryRecord } from "../../core/types.js";
 import { computeContentHash } from "../../processing/hash-utils.js";
-import { formatRelevantMemoriesContext } from "../../retrieval/prompt-safety.js";
+import {
+  formatRelevantMemoriesContext,
+  looksLikePromptInjection,
+} from "../../retrieval/prompt-safety.js";
 import { buildOpenClawScope } from "./scope.js";
 
 export interface HookLogger {
@@ -48,11 +54,43 @@ export interface AutoCaptureContext {
   enqueueGraphExtraction?: (chunkId: string, text: string, scope: import("../../core/types.js").MemoryScope) => Promise<void>;
 }
 
-function defaultShouldCapture(text: string): boolean {
-  return text.length >= 10;
+const MEMORY_TRIGGERS = [
+  /zapamatuj si|pamatuj|remember/i,
+  /preferuji|radši|nechci|prefer/i,
+  /rozhodli jsme|budeme používat/i,
+  /\+\d{10,}/,
+  /[\w.-]+@[\w.-]+\.\w+/,
+  /můj\s+\w+\s+je|je\s+můj/i,
+  /my\s+\w+\s+is|is\s+my/i,
+  /i (like|prefer|hate|love|want|need)/i,
+  /always|never|important/i,
+];
+
+export function shouldCapture(text: string, options?: { maxChars?: number }): boolean {
+  const maxChars = options?.maxChars ?? DEFAULT_CAPTURE_MAX_CHARS;
+  if (text.length < 10 || text.length > maxChars) {
+    return false;
+  }
+  if (text.includes("<relevant-memories>")) {
+    return false;
+  }
+  if (text.startsWith("<") && text.includes("</")) {
+    return false;
+  }
+  if (text.includes("**") && text.includes("\n-")) {
+    return false;
+  }
+  const emojiCount = (text.match(/[\u{1F300}-\u{1F9FF}]/gu) || []).length;
+  if (emojiCount > 3) {
+    return false;
+  }
+  if (looksLikePromptInjection(text)) {
+    return false;
+  }
+  return MEMORY_TRIGGERS.some((pattern) => pattern.test(text));
 }
 
-function defaultDetectCategory(text: string): MemoryCategory {
+export function detectCategory(text: string): MemoryCategory {
   const lower = text.toLowerCase();
   if (/prefer|radši|like|love|hate|want/i.test(lower)) {
     return "preference";
@@ -150,11 +188,11 @@ export async function handleAgentEndCapture(
   }
 
   try {
-    const shouldCapture = context.shouldCapture ?? defaultShouldCapture;
-    const detectCategory = context.detectCategory ?? defaultDetectCategory;
+    const shouldCaptureFn = context.shouldCapture ?? shouldCapture;
+    const detectCategoryFn = context.detectCategory ?? detectCategory;
     const texts = extractUserMessageTexts(event.messages);
     const toCapture = texts.filter(
-      (text) => text && shouldCapture(text, { maxChars: context.captureMaxChars }),
+      (text) => text && shouldCaptureFn(text, { maxChars: context.captureMaxChars }),
     );
     if (toCapture.length === 0) {
       return;
@@ -168,7 +206,7 @@ export async function handleAgentEndCapture(
       .map((text, index) => ({
         text,
         contentHash: hashes[index],
-        category: detectCategory(text),
+        category: detectCategoryFn(text),
         importance: 0.7,
       }));
 

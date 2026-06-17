@@ -95,6 +95,7 @@ describe("registerProjectCliCommands 注册", () => {
       "status",
       "context",
       "lookup",
+      "ingest-history",
     ]);
   });
 });

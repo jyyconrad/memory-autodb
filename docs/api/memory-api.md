@@ -7,7 +7,7 @@
 3. **MCP facade** — MCP 协议工具（stdio/HTTP transport）
 4. **JavaScript SDK** — 通过 REST API 的编程客户端
 
-参数以源码为准：[index.ts](../../index.ts)、[api/rest/router.ts](../../api/rest/router.ts)、[adapters/mcp/tools.ts](../../adapters/mcp/tools.ts)、[sdk/js/client.ts](../../sdk/js/client.ts)。
+参数以源码为准：[index.ts](../../index.ts)、[adapters/rest/router.ts](../../adapters/rest/router.ts)、[adapters/mcp/tools.ts](../../adapters/mcp/tools.ts)、[adapters/sdk/client.ts](../../adapters/sdk/client.ts)。
 
 ## 架构概述
 
@@ -337,7 +337,7 @@ private 内容不会返回 raw，只显示 `[private]` 预览。
 
 ## JavaScript SDK
 
-SDK 位于 `sdk/js/`，通过 REST API 访问 MemoryService。不依赖 OpenClaw，也不直接访问本地数据库。
+SDK 位于 `adapters/sdk/`，通过 REST API 访问 MemoryService。不依赖 OpenClaw，也不直接访问本地数据库。`sdk/js/` 保留为旧 deep import 的兼容 re-export。
 
 ### 初始化
 

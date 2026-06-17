@@ -81,7 +81,7 @@ ms recall "查询内容" --explain
 ms forget <记忆ID>
 
 # 导入 agent history
-ms import ./agent-history.jsonl
+ms project ingest-history --from codex --dry-run
 ```
 
 ## 下一步
