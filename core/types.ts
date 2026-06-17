@@ -59,6 +59,41 @@ export type MemoryLifecycleStatus =
   | "promoted";
 
 /**
+ * AdmissionRoute: 准入路由结果（D-02 / D-19，§0.3.1 / §6.2）
+ *
+ * 表示一条新记忆经过 admission 打分后被路由到的去向，是"准入阶段"的瞬时结果，
+ * 与候选区状态机 `CandidateStatus`、主库生命周期 `MemoryLifecycleStatus` 分开定义，
+ * 严禁共用同一枚举（D-19）。取值严格对应 §0.3.1 表：
+ * - drop: 低于阈值带，不入库（不可见）
+ * - candidate_low_priority: 0.40–0.55，低优先候选（TTL=30d）
+ * - candidate: 0.55–0.88，普通候选
+ * - active: >=0.88，直接进入主库 active
+ * - lookup_only / evidence_only: economy 模式不丢弃，仅保留可搜索/证据（D-20）
+ */
+export type AdmissionRoute =
+  | "drop"
+  | "candidate_low_priority"
+  | "candidate"
+  | "active"
+  | "lookup_only"
+  | "evidence_only";
+
+/**
+ * UserVisibleStatus: 用户可见聚合视图（§0.3.1，D-19）
+ *
+ * 仅服务于 CLI/UI 聚合呈现层（`ms list` / `ms why`）：
+ * - 不持久化、不落库
+ * - 不参与任何算法判定（算法只认 AdmissionRoute / CandidateStatus / MemoryLifecycleStatus 三套内部状态）
+ * 由 `mapToUserVisibleStatus` 从内部状态单向聚合得到。
+ */
+export type UserVisibleStatus =
+  | "active"
+  | "pending"
+  | "low_priority"
+  | "archived"
+  | "forgotten";
+
+/**
  * MemoryVisibility: 可见性
  */
 export type MemoryVisibility = "private" | "workspace" | "team" | "public";
