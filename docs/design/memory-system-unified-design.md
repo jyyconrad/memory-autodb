@@ -296,7 +296,7 @@ interface ChatMessage {
 
 **目的**：从 agent 工作记录中提取"未来会影响 agent 行为"的候选记忆，分类到 5 type。
 
-**触发**：autoCapture（对话结束钩子）、`ms import`（历史导入）、`memory_store`（显式调用）。
+**触发**：autoCapture（对话结束钩子）、`ms project ingest-history --dry-run`（历史导入预览）、`memory_store`（显式调用）。
 
 **输入结构**：
 
@@ -2856,4 +2856,3 @@ P0 三段拆分（D-23，按依赖顺序，前序未完成会阻塞后续）
 | 状态 | 已定稿 |
 | 定位 | mengshu 记忆系统算法层单一事实来源 |
 | 决策范围 | D-01~D-23（详见 §16.1） |
-

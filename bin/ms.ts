@@ -11,10 +11,7 @@ import { Command } from "commander";
 import { resolveConfigPath, expandHome, resolveEnvPath, resolveLegacyHomeDir } from "../core/paths.js";
 import { runInteractiveSetup } from "../adapters/openclaw/cli-setup.js";
 import { memoryConfigSchema } from "../config.js";
-import { DatabaseFactory } from "../db/factory.js";
-import { Embeddings } from "../processing/embeddings.js";
-import { DefaultMemoryService } from "../core/memory-service.js";
-import { LegacyDatabaseAdapter } from "../storage/legacy-database-adapter.js";
+import { createMengshuRuntime } from "../runtime.js";
 import { registerDoctorCliCommands } from "../adapters/openclaw/cli-doctor.js";
 import { registerMcpCliCommands } from "../adapters/openclaw/cli-mcp.js";
 import { registerMemoryServerCliCommands } from "../adapters/openclaw/cli.js";
@@ -23,8 +20,6 @@ import { registerWhyCliCommands } from "../adapters/openclaw/cli-why.js";
 import { registerForgetCliCommands } from "../adapters/openclaw/cli-forget.js";
 import { registerRecallCliCommands } from "../adapters/openclaw/cli-recall.js";
 import { registerMigrateHomeCommand } from "../adapters/openclaw/cli-migrate-home.js";
-import { AgentFastPathService } from "../api/agent-fast-path.js";
-import { extractRecords } from "../adapters/openclaw/agent-service-helper.js";
 import path from "node:path";
 
 const LEGACY_ENV_PATH = path.join(resolveLegacyHomeDir(), ".env");
@@ -107,12 +102,6 @@ async function main(): Promise<void> {
   const configDir = path.dirname(configPath);
   const resolvedDbPath = resolveMaybeRelative(dbPath, configDir);
 
-  // 初始化服务
-  const db = DatabaseFactory.createProvider(cfg, resolvedDbPath);
-  const embeddings = new Embeddings(cfg.embedding, cfg.batchProcessing);
-  const repository = new LegacyDatabaseAdapter(db, { appId: "mengshu" });
-  const memoryService = new DefaultMemoryService({ repository, embeddings });
-
   const defaultScope = {
     tenantId: "local",
     appId: "mengshu",
@@ -123,28 +112,11 @@ async function main(): Promise<void> {
     visibility: "private" as const,
   };
 
-  const agentFastPath = new AgentFastPathService({
+  const runtime = createMengshuRuntime({
+    config: cfg,
+    resolvedDbPath,
+    appId: "mengshu",
     defaultScope,
-    loadRecordsForScope: async (scope) => {
-      const result = await memoryService.recall({
-        query: "",
-        scope,
-        limit: 50,
-        minScore: 0,
-        searchAll: true,
-      });
-      return extractRecords(result.hits);
-    },
-    recall: async (scope, query, opts) =>
-      memoryService.recall({
-        query,
-        scope,
-        limit: opts?.limit ?? 10,
-        minScore: opts?.minScore ?? 0.1,
-        searchAll: true,
-      }),
-    storeObservation: async () => ({ id: "not-implemented" }),
-    enqueueJob: async ({ type }) => `standalone-${type}-${Date.now()}`,
     logger: {
       warn: (message) => console.warn(`[mengshu] ${message}`),
     },
@@ -160,40 +132,48 @@ async function main(): Promise<void> {
   // 注册所有命令
   registerDoctorCliCommands(program, {
     config: cfg,
-    service: memoryService,
-    embeddings,
+    service: runtime.memoryService,
+    embeddings: runtime.embeddings,
   });
 
   registerMcpCliCommands(program, {
-    service: memoryService,
-    agentFastPath,
+    service: runtime.memoryService,
+    agentFastPath: runtime.agentFastPath,
     namespaces: ["memories", "knowledge"],
   });
 
   registerMemoryServerCliCommands(program, {
     config: cfg,
-    service: memoryService,
-    getTableStats: db.getTableStats ? () => db.getTableStats!() : undefined,
+    service: runtime.memoryService,
+    console: runtime.consoleApi,
+    agentFastPath: runtime.agentFastPath,
+    worker: {
+      jobs: runtime.ingestionStore.jobs,
+      leaseMs: 30_000,
+      intervalMs: 1_000,
+      handlers: runtime.handlers,
+    },
+    getTableStats: runtime.db.getTableStats ? () => runtime.db.getTableStats!() : undefined,
   });
 
   registerProjectCliCommands(program, {
-    service: memoryService,
-    getRecordCount: () => db.count(),
+    service: runtime.memoryService,
+    getRecordCount: () => runtime.db.count(),
   });
 
   registerWhyCliCommands(program, {
-    service: memoryService,
+    service: runtime.memoryService,
     scope: defaultScope,
   });
 
   registerForgetCliCommands(program, {
-    repository,
+    repository: runtime.memoryRepository,
     defaultScope,
-    embeddings,
+    embeddings: runtime.embeddings,
   });
 
   registerRecallCliCommands(program, {
-    service: memoryService,
+    service: runtime.memoryService,
     defaultScope,
   });
 
@@ -204,9 +184,9 @@ async function main(): Promise<void> {
     .command("stats")
     .description("Show memory statistics")
     .action(async () => {
-      const totalCount = await db.count();
-      const memoryCount = await db.count({ dataType: "memory" });
-      const documentCount = await db.count({ dataType: "document" });
+      const totalCount = await runtime.db.count();
+      const memoryCount = await runtime.db.count({ dataType: "memory" });
+      const documentCount = await runtime.db.count({ dataType: "document" });
 
       console.log("Memory Statistics:");
       console.log(`- Total entries: ${totalCount}`);
@@ -214,8 +194,8 @@ async function main(): Promise<void> {
       console.log(`- Scanned documents: ${documentCount}`);
       console.log(`- Database type: ${cfg.dbType}`);
 
-      if (db.getTableStats) {
-        const stats = await db.getTableStats();
+      if (runtime.db.getTableStats) {
+        const stats = await runtime.db.getTableStats();
         console.log("\nTables:");
         for (const stat of stats) {
           console.log(`- ${stat.name}: ${stat.count} entries`);
@@ -229,7 +209,7 @@ async function main(): Promise<void> {
     .option("-l, --limit <n>", "Maximum results", "10")
     .option("-s, --min-score <n>", "Minimum score", "0.3")
     .action(async (query: string, options: { limit: string; minScore: string }) => {
-      const result = await memoryService.recall({
+      const result = await runtime.memoryService.recall({
         query,
         scope: defaultScope,
         limit: parseInt(options.limit, 10),
@@ -239,9 +219,9 @@ async function main(): Promise<void> {
 
       console.log(`Found ${result.hits.length} results:\n`);
       for (const hit of result.hits) {
-        const record = hit.record as any;
-        console.log(`[${hit.score.toFixed(3)}] ${record.text || ''}`);
-        console.log(`  Kind: ${record.kind || 'unknown'} | Category: ${record.category || 'unknown'}`);
+        const record = hit.record as { text?: string; kind?: string; category?: string };
+        console.log(`[${hit.score.toFixed(3)}] ${record.text || ""}`);
+        console.log(`  Kind: ${record.kind || "unknown"} | Category: ${record.category || "unknown"}`);
         console.log();
       }
     });

@@ -29,7 +29,7 @@ ms doctor                       # 配置/连接诊断
 ms why <记忆ID>                  # 评分明细追溯
 ms recall "查询" --explain       # 召回 + importance breakdown
 ms forget <记忆ID>               # 撤回/归档/纠错
-ms import <path>                # 导入 agent history
+ms project ingest-history --from codex --dry-run  # 预览 agent history 导入
 ms project                      # 项目管理
 ms stats / ms search / ms scan / ms serve / ms mcp
 ```

@@ -11,8 +11,8 @@ import { readFile } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { MemoryService } from "../core/service-types.js";
-import { createRestRouter } from "../api/rest/router.js";
-import type { RestRequest, RestRouterOptions } from "../api/rest/types.js";
+import { createRestRouter } from "../adapters/rest/router.js";
+import type { RestRequest, RestRouterOptions } from "../adapters/rest/types.js";
 import { startJobWorkerLoop, type JobWorkerLoopOptions } from "./workers.js";
 import type { JobRepository } from "../storage/repositories/types.js";
 

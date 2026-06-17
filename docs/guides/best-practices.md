@@ -157,7 +157,7 @@ await memory.recall({
 导入 agent history 时自动脱敏：
 
 ```bash
-ms import ./history.jsonl --redact
+ms project ingest-history --from codex --dry-run
 ```
 
 自动移除：

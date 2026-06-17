@@ -70,7 +70,7 @@ ms tables                      # 查看表结构
 
 # 数据管理
 ms scan ./docs                 # 扫描目录
-ms import history.jsonl        # 导入 agent history
+ms project ingest-history --from codex --dry-run  # 预览 agent history 导入
 ms cleanup                     # 清理过期数据
 ms migrate-home               # 迁移旧配置
 
@@ -180,10 +180,12 @@ mengshu 使用三层配置：
 ├── retrieval/                    # 召回编排、融合排序
 ├── ingest/                       # 摄入管线、agent-history 导入
 ├── feedback/                     # 反馈闭环
-├── adapters/                     # OpenClaw / MCP 适配
+├── adapters/                     # 产品/协议入口适配
 │   ├── openclaw/                 # OpenClaw 插件 + CLI
-│   └── mcp/                      # MCP Server
-├── api/                          # REST API
+│   ├── mcp/                      # MCP Server
+│   ├── rest/                     # REST API
+│   └── sdk/                      # JS SDK
+├── api/                          # Agent fast path
 ├── console/                      # Web Console
 ├── storage/                      # 存储抽象层
 └── docs/                         # 文档

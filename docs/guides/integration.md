@@ -164,10 +164,10 @@ Agent history 格式（JSONL）：
 ### 导入
 
 ```bash
-ms import ./agent-history.jsonl --redact
+ms project ingest-history --from codex --dry-run
 ```
 
-`--redact` 选项自动脱敏：
+dry-run 会自动统计脱敏命中：
 - 移除 API keys
 - 移除敏感路径
 - 移除密码
