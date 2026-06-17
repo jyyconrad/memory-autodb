@@ -4,7 +4,7 @@ import {
   GRAPH_EXTRACTION_SYSTEM_PROMPT,
   extractGraphWithLlm,
 } from "./llm-extractor.js";
-import { ENTITY_TYPES, RELATION_PREDICATES } from "./types.js";
+import { ENTITY_TYPES, RELATION_PREDICATES } from "./schema.js";
 import type { LlmClient, LlmCompletionMessage, SimpleJsonSchema } from "../processing/llm-client.js";
 
 const scope = {
@@ -238,3 +238,110 @@ describe("extractGraphWithLlm 经 validateExtraction 裁决 (铁律 §3.1)", () 
     expect(result.relations).toHaveLength(0);
   });
 });
+
+describe("extractGraphWithLlm LLM 失败审计 (P1-Q2)", () => {
+  test("LLM 抛错时记录 llm_extraction_failed 审计日志并 fallback 到规则提取", async () => {
+    const auditCalls: Array<{
+      scope: unknown;
+      action: string;
+      targetId?: string;
+      metadata?: Record<string, unknown>;
+    }> = [];
+    const audit = vi.fn(async (input) => {
+      auditCalls.push(input);
+    });
+
+    const failingClient: LlmClient = {
+      available: true,
+      complete: vi.fn(),
+      summarize: vi.fn(),
+      extractStructured: vi.fn(async () => {
+        throw new Error("Network timeout");
+      }),
+    } as unknown as LlmClient;
+
+    // 使用不包含规则提取器关键词的简单文本（>= 50 字符才走 LLM）
+    const simpleText = "This is a simple test text that does not contain any recognizable patterns.";
+
+    const result = await extractGraphWithLlm(
+      {
+        scope,
+        chunkId: "chunk-1",
+        text: simpleText,
+        createdAt: 1710000000000,
+      },
+      { llmClient: failingClient, audit },
+    );
+
+    // 审计日志应该被调用一次
+    expect(audit).toHaveBeenCalledTimes(1);
+    expect(auditCalls).toHaveLength(1);
+    expect(auditCalls[0]).toMatchObject({
+      scope,
+      action: "llm_extraction_failed",
+      targetId: "chunk-1",
+      metadata: {
+        textLength: simpleText.length,
+        error: "Network timeout",
+        fallbackTo: "rule_based",
+      },
+    });
+
+    // fallback 到规则提取，规则提取器只会产生 chunk 实体，无关系
+    expect(result.entities).toHaveLength(1);
+    expect(result.entities[0].type).toBe("chunk");
+    expect(result.relations).toEqual([]);
+  });
+
+  test("LLM 成功时不记录审计日志", async () => {
+    const audit = vi.fn();
+
+    const successClient: LlmClient = {
+      available: true,
+      complete: vi.fn(),
+      summarize: vi.fn(),
+      extractStructured: vi.fn(async () => ({
+        entities: [{ name: "PostgreSQL", type: "tool" }],
+        relations: [],
+      })),
+    } as unknown as LlmClient;
+
+    await extractGraphWithLlm(
+      {
+        scope,
+        chunkId: "chunk-1",
+        text: longText,
+        createdAt: 1710000000000,
+      },
+      { llmClient: successClient, audit },
+    );
+
+    // 成功时不调用审计
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  test("未提供 audit 钩子时 LLM 失败不抛错", async () => {
+    const failingClient: LlmClient = {
+      available: true,
+      complete: vi.fn(),
+      summarize: vi.fn(),
+      extractStructured: vi.fn(async () => {
+        throw new Error("API error");
+      }),
+    } as unknown as LlmClient;
+
+    // 不提供 audit 钩子，应该正常 fallback 而不抛错
+    await expect(
+      extractGraphWithLlm(
+        {
+          scope,
+          chunkId: "chunk-1",
+          text: longText,
+          createdAt: 1710000000000,
+        },
+        { llmClient: failingClient },
+      ),
+    ).resolves.toBeDefined();
+  });
+});
+

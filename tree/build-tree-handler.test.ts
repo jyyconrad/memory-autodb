@@ -33,8 +33,19 @@ class FakeLlmClient implements LlmClient {
     return this.summarizeText;
   }
 
-  async extractStructured<T>(): Promise<T> {
-    throw new Error("not implemented in fake");
+  async extractStructured<T>(args: any): Promise<T> {
+    // 模拟结构化输出：返回符合 SealSummaryOutput schema 的对象
+    return {
+      title: "测试摘要",
+      summary: this.summarizeText,
+      keyFacts: [
+        {
+          text: "关键事实1",
+          evidenceLeafIds: ["leaf-1"],
+        },
+      ],
+      evidenceLeafIds: ["leaf-1"],
+    } as T;
   }
 }
 
@@ -179,7 +190,10 @@ describe("build_tree job handler", () => {
     expect(result).toEqual({ sealed: true, nodeId: expect.any(String) });
     const nodeId = (result as { sealed: true; nodeId: string }).nodeId;
     const node = await repository.getSummary(nodeId);
-    expect(node?.summary).toBe("这是一个抽象摘要");
+    // 验证三级摘要结构：title + summary + keyFacts
+    expect(node?.summary).toContain("# 测试摘要");
+    expect(node?.summary).toContain("这是一个抽象摘要");
+    expect(node?.summary).toContain("## 关键事实");
     expect(node?.metadata.summaryMode).toBe("abstractive");
   });
 

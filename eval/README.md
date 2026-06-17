@@ -146,3 +146,112 @@ npx vitest run eval/runners/quick-eval.test.ts
 ### 新增指标
 
 在 `runners/types.ts` 加 `GoldenMetric` 枚举，并在 `runners/judge.ts::defaultJudge` 中加判定分支。
+
+---
+
+## 人工标注流程（v2.0 - 从经验值到验证值）
+
+> **目标**：将经验值 golden set 扩充为经过人工标注验证的评测集（按设计 §15.5）
+
+### 标注工具
+
+位于 `eval/tools/annotator.js`，支持：
+- 双人独立标注
+- 一致性计算（Cohen's Kappa）
+- 仲裁分歧样例
+- 合并标注结果
+
+### 标注流程（以 mengshu-dedup 为例）
+
+#### 1. 双人独立标注
+
+**Annotator 1**:
+```bash
+node eval/tools/annotator.js annotate \
+  --suite mengshu-dedup \
+  --annotator human_001
+```
+
+**Annotator 2**:
+```bash
+node eval/tools/annotator.js annotate \
+  --suite mengshu-dedup \
+  --annotator human_002
+```
+
+输出文件：
+- `eval/results/human_001_mengshu-dedup_<timestamp>.jsonl`
+- `eval/results/human_002_mengshu-dedup_<timestamp>.jsonl`
+
+#### 2. 计算一致性
+
+```bash
+node eval/tools/annotator.js consistency \
+  --suite mengshu-dedup \
+  --file1 eval/results/human_001_mengshu-dedup_1718611200000.jsonl \
+  --file2 eval/results/human_002_mengshu-dedup_1718611200000.jsonl
+```
+
+输出：
+- Cohen's Kappa 值
+- 观察一致率 (P_o)
+- 分歧样例列表（自动导出到 `eval/results/conflicts_mengshu-dedup_<timestamp>.json`）
+
+**门禁**：
+- Kappa >= 0.85：直接合并
+- 0.70 <= Kappa < 0.85：仲裁分歧样例
+- Kappa < 0.70：重新标注
+
+#### 3. 仲裁（如有分歧）
+
+```bash
+node eval/tools/annotator.js arbitrate \
+  --conflicts eval/results/conflicts_mengshu-dedup_1718611200000.json \
+  --arbitrator human_003
+```
+
+仲裁人逐条审核分歧样例，给出最终标注 + 理由。
+
+#### 4. 合并标注结果
+
+```bash
+node eval/tools/annotator.js merge \
+  --suite mengshu-dedup \
+  --file1 eval/results/human_001_mengshu-dedup_1718611200000.jsonl \
+  --file2 eval/results/human_002_mengshu-dedup_1718611200000.jsonl \
+  --arbitrated eval/results/arbitrated_1718611200000.json \
+  --output eval/goldens/mengshu-dedup-annotated.jsonl
+```
+
+生成带标注元数据的最终 jsonl 文件。
+
+#### 5. 更新 manifest
+
+```bash
+# 计算新 sha256
+shasum -a 256 eval/goldens/mengshu-dedup-annotated.jsonl
+
+# 手动更新 eval/goldens/manifest.json
+```
+
+### 标注规范
+
+详见 `eval/ANNOTATION_GUIDE.md`，包括：
+- extraction 三要素（type/targetScope/evidence）
+- dedup 关系枚举（duplicate/update/conflict/related/distinct）
+- 边界样例判定准则
+- 常见问题 FAQ
+
+### 扩充计划
+
+详见 `eval/EXPANSION_PLAN.md`，包括：
+- P0-c：提取 100 条 + 去重 80 条（双人标注）
+- P1：摘要 50 条 + 冲突 30 条
+- P2：主动学习采样（每周 25 条）
+
+### 质量保障
+
+1. **双人标注 + 仲裁**：确保标注质量
+2. **一致性门禁**：Kappa < 0.8 必须重新标注
+3. **边界样例额外审核**：第三人审核通过才入库
+4. **持续监控**：P2 主动学习采样，持续改进

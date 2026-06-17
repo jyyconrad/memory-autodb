@@ -51,6 +51,13 @@ export function enqueueExtractGraphJob(
 export interface ExtractGraphHandlerDeps {
   llmClient: LlmClient;
   graphRepository: InMemoryGraphRepository;
+  /** 可选审计钩子：记录 LLM 提取失败事件。 */
+  audit?(input: {
+    scope: MemoryScope;
+    action: string;
+    targetId?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<void>;
 }
 
 export function createExtractGraphHandler(deps: ExtractGraphHandlerDeps) {
@@ -74,7 +81,10 @@ export function createExtractGraphHandler(deps: ExtractGraphHandlerDeps) {
         context: payload.context,
         metadata: {},
       },
-      { llmClient: deps.llmClient },
+      {
+        llmClient: deps.llmClient,
+        audit: deps.audit,
+      },
     );
 
     await deps.graphRepository.upsertEntities(result.entities);

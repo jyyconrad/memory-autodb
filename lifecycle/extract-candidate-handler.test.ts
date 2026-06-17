@@ -2,9 +2,9 @@
  * extract-candidate-handler.ts 单元测试。
  *
  * 验证 extract_candidate job handler 把 observation 文本经 extractor 抽取后
- * 按 decideAdmission 准入策略写入候选区（pending），并保证：
+ * 按 valueScore 准入策略写入候选区（pending），并保证：
  * 1. 抽到的候选默认进 candidate（pending），不直配主库（自动抽取不污染主库）。
- * 2. decideAdmission route=drop 的不入候选。
+ * 2. 准入决策 route=drop 的不入候选。
  * 3. 敏感文本（extractor 返回 []）不产生候选。
  * 4. payload 缺失 text/scope 时安全返回，不抛未捕获异常。
  * 5. 同 scope 同文本的重复 observation 不产生重复 pending 候选。
@@ -174,8 +174,205 @@ class ThrowingLlmClient extends FakeLlmClient {
   }
 }
 
+describe("inferSourceScope 推断逻辑（P1-Q3 修复）", () => {
+  test("有 sessionId → session（最窄）", async () => {
+    const candidates = new InMemoryCandidateRepository();
+    const text = "用户偏好使用 TypeScript 严格模式。";
+    const sessionScope = {
+      ...scope,
+      sessionId: "sess-123",
+      workspaceId: "ws-1",
+      projectId: "p1",
+    };
+    // LLM 返回 targetScope=workspace，但 sourceScope=session 应收窄到 session
+    const llmClient = new StubLlmClient({
+      candidates: [
+        {
+          text,
+          semanticType: "profile",
+          profileDimension: "language",
+          targetScope: "workspace",
+          evidence: { eventIds: ["trace-1"], quote: "TypeScript 严格模式" },
+          salience: 0.8,
+          temporality: "durable",
+        },
+      ],
+    });
+
+    const handler = createExtractCandidateHandler({
+      extractor: new HeuristicTypeExtractor(),
+      candidates,
+      llmClient,
+    });
+
+    await handler(job({ scope: sessionScope, text, traceId: "trace-1", intent: "auto" }));
+    const pending = await candidates.list({ scope: sessionScope, status: "pending" });
+    expect(pending).toHaveLength(1);
+    expect(pending[0].metadata.targetScope).toBe("session");
+  });
+
+  test("有 projectId（无 sessionId）→ project", async () => {
+    const candidates = new InMemoryCandidateRepository();
+    const text = "禁止在未确认前删除生产数据。";
+    const projectScope = { ...scope, sessionId: undefined, projectId: "p1" };
+    const llmClient = new StubLlmClient({
+      candidates: [
+        {
+          text,
+          semanticType: "rules",
+          targetScope: "user",
+          evidence: { eventIds: ["trace-2"], quote: "禁止在未确认前删除生产数据" },
+          salience: 0.9,
+          temporality: "durable",
+        },
+      ],
+    });
+
+    const handler = createExtractCandidateHandler({
+      extractor: new HeuristicTypeExtractor(),
+      candidates,
+      llmClient,
+    });
+
+    await handler(job({ scope: projectScope, text, traceId: "trace-2", intent: "auto" }));
+    const pending = await candidates.list({ scope: projectScope, status: "pending" });
+    expect(pending).toHaveLength(1);
+    // targetScope=user 宽于 sourceScope=project，应收窄到 project
+    expect(pending[0].metadata.targetScope).toBe("project");
+  });
+
+  test("有 workspaceId（无 projectId/sessionId）→ workspace", async () => {
+    const candidates = new InMemoryCandidateRepository();
+    const text = "团队统一使用 Prettier 格式化代码。";
+    const workspaceScope = {
+      ...scope,
+      sessionId: undefined,
+      projectId: "",
+      workspaceId: "ws-1",
+    };
+    const llmClient = new StubLlmClient({
+      candidates: [
+        {
+          text,
+          semanticType: "rules",
+          targetScope: "global",
+          evidence: { eventIds: ["trace-3"], quote: "Prettier 格式化代码" },
+          salience: 0.7,
+          temporality: "durable",
+        },
+      ],
+    });
+
+    const handler = createExtractCandidateHandler({
+      extractor: new HeuristicTypeExtractor(),
+      candidates,
+      llmClient,
+    });
+
+    await handler(job({ scope: workspaceScope, text, traceId: "trace-3", intent: "auto" }));
+    const pending = await candidates.list({ scope: workspaceScope, status: "pending" });
+    expect(pending).toHaveLength(1);
+    // targetScope=global 宽于 sourceScope=workspace，应收窄到 workspace
+    expect(pending[0].metadata.targetScope).toBe("workspace");
+  });
+});
+
 describe("createExtractCandidateHandler - LLM 异步路径（§0.8 / §2.3 / §10.4）", () => {
   const traceId = "trace-1";
+
+  test("P1-Q3：sessionId 存在时 sourceScope 推断为 session", async () => {
+    const candidates = new InMemoryCandidateRepository();
+    const text = "禁止在未确认前删除生产数据。";
+    const sessionScope = { ...scope, sessionId: "sess-123" };
+    // LLM 返回 targetScope=global，但 sourceScope=session 时闸门 11 应收窄到 session
+    const llmClient = new StubLlmClient({
+      candidates: [
+        {
+          text,
+          semanticType: "rules",
+          kind: "constraint",
+          targetScope: "global",
+          evidence: { eventIds: [traceId], quote: "禁止在未确认前删除生产数据" },
+          salience: 0.9,
+          temporality: "durable",
+          crossContextual: true,
+          reason: "硬约束",
+        },
+      ],
+    });
+
+    const handler = createExtractCandidateHandler({
+      extractor: new HeuristicTypeExtractor(),
+      candidates,
+      llmClient,
+    });
+
+    await handler(job({ scope: sessionScope, text, traceId, intent: "auto" }));
+    const pending = await candidates.list({ scope: sessionScope, status: "pending" });
+    expect(pending).toHaveLength(1);
+    // 验证闸门 11：targetScope 被收窄到 session（不是 global）
+    expect(pending[0].metadata.targetScope).toBe("session");
+  });
+
+  test("P1-Q3：traceId 正确传递给 validator 作为 eventId", async () => {
+    const candidates = new InMemoryCandidateRepository();
+    const text = "禁止在未确认前删除生产数据。";
+    const customTraceId = "trace-custom-456";
+    // LLM 返回的 eventIds 必须与 traceId 对齐，否则闸门 2 拒绝
+    const llmClient = new StubLlmClient({
+      candidates: [
+        {
+          text,
+          semanticType: "rules",
+          kind: "constraint",
+          targetScope: "project",
+          evidence: { eventIds: [customTraceId], quote: "禁止在未确认前删除生产数据" },
+          salience: 0.9,
+          temporality: "durable",
+        },
+      ],
+    });
+
+    const handler = createExtractCandidateHandler({
+      extractor: new HeuristicTypeExtractor(),
+      candidates,
+      llmClient,
+    });
+
+    const result = (await handler(job({ scope, text, traceId: customTraceId, intent: "auto" }))) as { created: number };
+    expect(result.created).toBe(1);
+    const pending = await candidates.list({ scope, status: "pending" });
+    expect(pending[0].evidenceIds).toContain(customTraceId);
+  });
+
+  test("P1-Q3：无 traceId 时使用 unknown-event 兜底", async () => {
+    const candidates = new InMemoryCandidateRepository();
+    const text = "禁止在未确认前删除生产数据。";
+    const llmClient = new StubLlmClient({
+      candidates: [
+        {
+          text,
+          semanticType: "rules",
+          kind: "constraint",
+          targetScope: "project",
+          // eventIds 对齐 unknown-event（handler 的兜底 eventId）
+          evidence: { eventIds: ["unknown-event"], quote: "禁止在未确认前删除生产数据" },
+          salience: 0.9,
+          temporality: "durable",
+        },
+      ],
+    });
+
+    const handler = createExtractCandidateHandler({
+      extractor: new HeuristicTypeExtractor(),
+      candidates,
+      llmClient,
+    });
+
+    // 不传 traceId
+    const result = (await handler(job({ scope, text, intent: "auto" }))) as { created: number };
+    expect(result.created).toBe(1);
+  });
 
   test("llmClient.available 时走 LLM 路径，候选过 validator 后入库", async () => {
     const candidates = new InMemoryCandidateRepository();
@@ -210,7 +407,10 @@ describe("createExtractCandidateHandler - LLM 异步路径（§0.8 / §2.3 / §1
     expect(pending).toHaveLength(1);
     expect(pending[0].semanticType).toBe("rules");
     expect(pending[0].extractor).toBe("llm");
-    expect(pending[0].metadata.admission).toBe("llm_validated");
+    // P1-Q4：metadata.admission 记录实际 AdmissionRoute 路由值（不再是静态字符串）。
+    // 此处文本为纯中文，闸门 9（泛词过滤）会标 evidenceOnly=true，admission 决策返回 evidence_only。
+    expect(pending[0].metadata.admission).toBe("evidence_only");
+    expect(pending[0].metadata.admissionReason).toBeDefined();
   });
 
   test("LLM 抛错时 fallback 到 heuristic 路径（链路不断）", async () => {

@@ -3,8 +3,8 @@
  *
  * 过滤无效实体和关系，任何不通过的项被丢弃而不是抛错。
  */
-import { ENTITY_TYPES, RELATION_PREDICATES } from "./types.js";
-import type { EntityType, RelationPredicate } from "./types.js";
+import { ENTITY_TYPES, RELATION_PREDICATES } from "./schema.js";
+import type { EntityType, RelationPredicate } from "./schema.js";
 
 export interface RawEntity {
   name: unknown;

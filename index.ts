@@ -47,6 +47,7 @@ import { registerProjectCliCommands } from "./adapters/openclaw/cli-project.js";
 import { registerDoctorCliCommands } from "./adapters/openclaw/cli-doctor.js";
 import { registerMcpCliCommands } from "./adapters/openclaw/cli-mcp.js";
 import { registerMigrateHomeCommand } from "./adapters/openclaw/cli-migrate-home.js";
+import { registerMaintainCommands } from "./adapters/openclaw/cli-maintain.js";
 import { createConsoleApi } from "./console/api.js";
 import { InMemoryCandidateRepository } from "./lifecycle/candidate-repository.js";
 import { CandidateReviewService } from "./lifecycle/candidate-review.js";
@@ -59,6 +60,10 @@ import { extractRecords } from "./adapters/openclaw/agent-service-helper.js";
 import { InMemoryTreeRepository } from "./tree/buffer.js";
 import { createBuildTreeHandler } from "./tree/build-tree-handler.js";
 import { createLlmClient } from "./processing/llm-client.js";
+import { InMemoryGraphRepository } from "./graph/repository.js";
+import { createExtractGraphHandler } from "./graph/extract-graph-handler.js";
+import { QueryHitsTracker } from "./graph/query-hits-tracker.js";
+import { CentralityCalculator } from "./graph/centrality-calculator.js";
 
 export {
   escapeMemoryForPrompt,
@@ -186,10 +191,21 @@ const memoryPlugin = {
       const resolvedDbPath = api.resolvePath(cfg.dbPath!);
       const db = DatabaseFactory.createProvider(cfg, resolvedDbPath);
       const embeddings = new Embeddings(cfg.embedding, cfg.batchProcessing);
+
+      // P1-Q2：LLM 驱动的知识图谱仓库（in-memory，v0.x 不持久化）。
+      const graphRepository = new InMemoryGraphRepository();
+
+      // P2：QueryHits 追踪器，在 recall 时递增 entity.queryHits30d
+      const queryHitsTracker = new QueryHitsTracker({ graphRepo: graphRepository });
+
+      // P2：Centrality 计算器，按 degree 归一化计算 graphCentrality
+      const centralityCalculator = new CentralityCalculator({ graphRepo: graphRepository });
+
       const memoryRepository = new LegacyDatabaseAdapter(db, { appId: "openclaw" });
       const memoryService = new DefaultMemoryService({
         repository: memoryRepository,
         embeddings,
+        queryHitsTracker,
       });
     const ingestionStore = new InMemoryMemoryStore();
     const ingestionPipeline = new IngestionPipeline({
@@ -271,6 +287,16 @@ const memoryPlugin = {
     const buildTreeHandler = createBuildTreeHandler({
       repository: treeRepository,
       llmClient,
+    });
+
+    // P1-Q2：extract_graph job handler：LLM 驱动的知识图谱提取，失败时 fallback 到规则提取。
+    // LLM 异常通过 audit 钩子记录 llm_extraction_failed 事件到 ingestionStore.audit。
+    const extractGraphHandler = createExtractGraphHandler({
+      llmClient,
+      graphRepository,
+      audit: async ({ scope, action, targetId, metadata }) => {
+        await ingestionStore.audit.append({ scope, action, targetId, metadata });
+      },
     });
 
     // 初始化路由引擎（如果启用了多知识库功能）
@@ -465,6 +491,7 @@ const memoryPlugin = {
             handlers: {
               extract_candidate: extractCandidateHandler,
               build_tree: buildTreeHandler,
+              extract_graph: extractGraphHandler,
             },
           },
           getTableStats: db.getTableStats ? () => db.getTableStats!() : undefined,
@@ -491,6 +518,19 @@ const memoryPlugin = {
           service: memoryService,
           agentFastPath,
           namespaces: ["memories", "knowledge"],
+        });
+
+        // P2: ms maintain（数据维护工具：calculate-centrality 等）
+        registerMaintainCommands(memory, {
+          centralityCalculator,
+          getDefaultScope: () => ({
+            tenantId: "default",
+            appId: "openclaw",
+            userId: "default",
+            projectId: "default",
+            agentId: "default",
+            namespace: "default",
+          }),
         });
 
         memory

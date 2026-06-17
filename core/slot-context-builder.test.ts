@@ -280,4 +280,256 @@ describe("SlotContextBuilder", () => {
       expect(result.filteredSummary).toEqual([]);
     });
   });
+
+  describe("profile 分层合并（D-13）", () => {
+    it("同 profileDimension，project 层覆盖 global 层", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        {
+          id: "global-lang",
+          kind: "preference",
+          semanticType: "profile",
+          text: "默认用英文",
+          importance: 0.8,
+          profileDimension: "language",
+          profileLayer: "global",
+          scope: mockScope,
+          createdAt: 1000,
+        },
+        {
+          id: "project-lang",
+          kind: "preference",
+          semanticType: "profile",
+          text: "这个项目里用中文",
+          importance: 0.9,
+          profileDimension: "language",
+          profileLayer: "project",
+          scope: mockScope,
+          createdAt: 2000,
+        },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      // active 应该只有 project 层的记忆
+      expect(result.slots.profile?.nodeCount).toBe(1);
+      expect(result.slots.profile?.content).toContain("这个项目里用中文");
+      expect(result.slots.profile?.content).not.toContain("默认用英文");
+
+      // global 层被覆盖，进入 filtered
+      const overridden = result.filtered?.find((f) => f.recordId === "global-lang");
+      expect(overridden).toBeDefined();
+      expect(overridden?.reason).toBe("overridden_by_layer");
+      expect(overridden?.metadata?.overriddenBy).toBe("project");
+    });
+
+    it("不同 profileDimension 互不影响，全部保留", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        {
+          id: "lang",
+          kind: "preference",
+          semanticType: "profile",
+          text: "默认用中文",
+          importance: 0.8,
+          profileDimension: "language",
+          profileLayer: "global",
+          scope: mockScope,
+        },
+        {
+          id: "style",
+          kind: "preference",
+          semanticType: "profile",
+          text: "回答要详细",
+          importance: 0.9,
+          profileDimension: "response_style",
+          profileLayer: "project",
+          scope: mockScope,
+        },
+        {
+          id: "verify",
+          kind: "preference",
+          semanticType: "profile",
+          text: "总是先验证",
+          importance: 0.85,
+          profileDimension: "verification_preference",
+          profileLayer: "app",
+          scope: mockScope,
+        },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      // 3 个不同维度，全部保留
+      expect(result.slots.profile?.nodeCount).toBe(3);
+      expect(result.slots.profile?.content).toContain("默认用中文");
+      expect(result.slots.profile?.content).toContain("回答要详细");
+      expect(result.slots.profile?.content).toContain("总是先验证");
+
+      // 无 filtered
+      expect(result.filtered?.filter((f) => f.reason === "overridden_by_layer")).toHaveLength(0);
+    });
+
+    it("app 层覆盖 global 层，但不覆盖 project 层", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        {
+          id: "global-lang",
+          kind: "preference",
+          semanticType: "profile",
+          text: "默认用英文",
+          importance: 0.7,
+          profileDimension: "language",
+          profileLayer: "global",
+          scope: mockScope,
+          createdAt: 1000,
+        },
+        {
+          id: "app-lang",
+          kind: "preference",
+          semanticType: "profile",
+          text: "在 Codex 里用中文",
+          importance: 0.8,
+          profileDimension: "language",
+          profileLayer: "app",
+          scope: mockScope,
+          createdAt: 2000,
+        },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      // app 层胜出
+      expect(result.slots.profile?.nodeCount).toBe(1);
+      expect(result.slots.profile?.content).toContain("在 Codex 里用中文");
+
+      // global 层被覆盖
+      const overridden = result.filtered?.find((f) => f.recordId === "global-lang");
+      expect(overridden?.reason).toBe("overridden_by_layer");
+      expect(overridden?.metadata?.overriddenBy).toBe("app");
+    });
+
+    it("自动推断缺失的 profileLayer", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        {
+          id: "infer-project",
+          kind: "preference",
+          semanticType: "profile",
+          text: "在这个项目里用中文",
+          importance: 0.9,
+          profileDimension: "language",
+          // profileLayer 缺失，应自动推断为 project
+          scope: mockScope,
+        },
+        {
+          id: "infer-global",
+          kind: "preference",
+          semanticType: "profile",
+          text: "总是用详细风格",
+          importance: 0.8,
+          profileDimension: "response_style",
+          // profileLayer 缺失，应自动推断为 global
+          scope: { ...mockScope, projectId: "" },
+        },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      // 两条都应该被推断并保留（不同维度）
+      expect(result.slots.profile?.nodeCount).toBe(2);
+    });
+
+    it("无 profileDimension 的 profile 记忆归入 unclassified，仍保留", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        {
+          id: "no-dim",
+          kind: "preference",
+          semanticType: "profile",
+          text: "用户偏好但无维度",
+          importance: 0.8,
+          profileLayer: "global",
+          // profileDimension 缺失
+          scope: mockScope,
+        },
+        {
+          id: "has-dim",
+          kind: "preference",
+          semanticType: "profile",
+          text: "默认用中文",
+          importance: 0.9,
+          profileDimension: "language",
+          profileLayer: "global",
+          scope: mockScope,
+        },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      // 两条都保留（unclassified 也进 active）
+      expect(result.slots.profile?.nodeCount).toBe(2);
+    });
+
+    it("复杂场景：3 层 2 维度混合", async () => {
+      const records: Partial<MemoryRecord>[] = [
+        // language 维度：3 层都有，project 应该胜出
+        {
+          id: "lang-global",
+          kind: "preference",
+          semanticType: "profile",
+          text: "全局默认英文",
+          importance: 0.7,
+          profileDimension: "language",
+          profileLayer: "global",
+          scope: mockScope,
+          createdAt: 1000,
+        },
+        {
+          id: "lang-app",
+          kind: "preference",
+          semanticType: "profile",
+          text: "Codex 里用简体中文",
+          importance: 0.8,
+          profileDimension: "language",
+          profileLayer: "app",
+          scope: mockScope,
+          createdAt: 2000,
+        },
+        {
+          id: "lang-project",
+          kind: "preference",
+          semanticType: "profile",
+          text: "这个项目里用繁体中文",
+          importance: 0.9,
+          profileDimension: "language",
+          profileLayer: "project",
+          scope: mockScope,
+          createdAt: 3000,
+        },
+        // response_style 维度：只有 app 层
+        {
+          id: "style-app",
+          kind: "preference",
+          semanticType: "profile",
+          text: "回答要详细",
+          importance: 0.85,
+          profileDimension: "response_style",
+          profileLayer: "app",
+          scope: mockScope,
+          createdAt: 4000,
+        },
+      ];
+
+      const result = await builder.buildSlotContext(mockScope, records as MemoryRecord[], { useCache: false });
+
+      // active 应该有 2 条（每个维度 1 条）
+      expect(result.slots.profile?.nodeCount).toBe(2);
+      expect(result.slots.profile?.content).toContain("这个项目里用繁体中文");
+      expect(result.slots.profile?.content).toContain("回答要详细");
+
+      // language 维度的 global 和 app 被覆盖
+      const overridden = result.filtered?.filter((f) => f.reason === "overridden_by_layer") ?? [];
+      expect(overridden).toHaveLength(2);
+
+      const overriddenIds = overridden.map((f) => f.recordId);
+      expect(overriddenIds).toContain("lang-global");
+      expect(overriddenIds).toContain("lang-app");
+    });
+  });
 });

@@ -24,6 +24,7 @@ import type {
   StoreMemoryInput,
   StoreMemoryResult,
 } from "./service-types.js";
+import type { QueryHitsTracker } from "../graph/query-hits-tracker.js";
 
 export type {
   BuildContextInput,
@@ -47,17 +48,24 @@ export interface DefaultMemoryServiceOptions {
    * 保持向后兼容。
    */
   audit?: AuditRepository;
+  /**
+   * 可选 queryHits 追踪器。注入后 recall 会递增被命中 entity 的 queryHits30d。
+   * P2 核心功能：使 hotness 评分生效，topic tree 开始创建。
+   */
+  queryHitsTracker?: QueryHitsTracker;
 }
 
 export class DefaultMemoryService implements MemoryService {
   private readonly repository: MemoryRepository;
   private readonly embeddings: EmbeddingPort;
   private readonly audit?: AuditRepository;
+  private readonly queryHitsTracker?: QueryHitsTracker;
 
   constructor(options: DefaultMemoryServiceOptions) {
     this.repository = options.repository;
     this.embeddings = options.embeddings;
     this.audit = options.audit;
+    this.queryHitsTracker = options.queryHitsTracker;
   }
 
   async storeMemory(input: StoreMemoryInput): Promise<StoreMemoryResult> {
@@ -114,6 +122,14 @@ export class DefaultMemoryService implements MemoryService {
       scoreBreakdown: { vector: record.score },
       provenance: record.provenance,
     }));
+
+    // P2: 追踪 queryHits，递增被命中 entity 的 queryHits30d
+    if (this.queryHitsTracker && hits.length > 0) {
+      // 异步追踪，不阻塞 recall 返回
+      this.queryHitsTracker.trackRecallHits(hits, scope).catch((error) => {
+        console.error("[QueryHitsTracker] Failed to track recall hits:", error);
+      });
+    }
 
     return {
       scope,

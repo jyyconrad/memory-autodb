@@ -32,6 +32,16 @@ export type MemorySemanticType =
   | "resource";
 
 /**
+ * ProfileLayer: profile 记忆的 3 层分层（D-13，§3.3）
+ *
+ * 避免项目偏好污染全局画像，召回优先级 project > app > global：
+ * - project: 绑定明确 projectId/repo/任务域，或用户说"这个项目里"
+ * - app: 绑定 appId/agent/工具，但不绑定具体项目
+ * - global: 跨项目长期偏好，或来自全局规则文件
+ */
+export type ProfileLayer = "project" | "app" | "global";
+
+/**
  * MemoryContainer: 记忆容器（语义归属）
  *
  * 与 MemoryScope（隔离边界）正交：
@@ -178,6 +188,10 @@ export interface MemoryRecord {
   promotedToSkillId?: string;
   /** v3.0 新增（可选）：版本号 */
   version?: number;
+  /** D-13 新增（可选）：profile 分层标识，仅 semanticType=profile 时有效 */
+  profileLayer?: ProfileLayer;
+  /** §3.3 新增（可选）：profile 维度，仅 semanticType=profile 时有效 */
+  profileDimension?: string;
   createdAt: number;
   updatedAt?: number;
   vector?: number[];

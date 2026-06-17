@@ -40,6 +40,7 @@ import {
   type RecallWeights,
 } from "./recall-scoring.js";
 import { packSlotsToPrompt } from "./slot-prompt-packer.js";
+import { mergeProfileByLayer, enrichProfileLayer } from "./profile-layer.js";
 
 export interface BuildSlotContextOptions {
   /** 每个槽位最大字符预算（默认按 type 推荐） */
@@ -239,6 +240,10 @@ export class SlotContextBuilder {
   /**
    * 按 semanticType 分组；无法归类的记入 filtered(no_semantic_type)。
    * 注意：no_semantic_type 是降级为 lookup-only，不是错误。
+   *
+   * D-13 profile 分层合并：
+   * - profile 类型按 profileLayer 合并（project > app > global）
+   * - 同 profileDimension 保留高层，低层记入 filtered(overridden_by_layer)
    */
   private groupBySemanticType(records: MemoryRecord[]): {
     grouped: Partial<Record<MemorySemanticType, MemoryRecord[]>>;
@@ -247,15 +252,49 @@ export class SlotContextBuilder {
     const grouped: Partial<Record<MemorySemanticType, MemoryRecord[]>> = {};
     const filtered: FilteredEntry[] = [];
 
+    // 1. 先按 semanticType 初步分组
+    const byType: Partial<Record<MemorySemanticType, MemoryRecord[]>> = {};
     for (const record of records) {
       if (!record.semanticType) {
         filtered.push({ recordId: record.id, reason: "no_semantic_type" });
         continue;
       }
-      if (!grouped[record.semanticType]) {
-        grouped[record.semanticType] = [];
+      if (!byType[record.semanticType]) {
+        byType[record.semanticType] = [];
       }
-      grouped[record.semanticType]!.push(record);
+      byType[record.semanticType]!.push(record);
+    }
+
+    // 2. 对 profile 类型应用分层合并（D-13）
+    if (byType.profile && byType.profile.length > 0) {
+      // 2.1 为缺失 profileLayer 的记忆自动补充
+      const enriched = byType.profile.map((r) => enrichProfileLayer(r));
+
+      // 2.2 按层级合并
+      const { active, overridden, unclassified } = mergeProfileByLayer(enriched);
+
+      // 2.3 active + unclassified 进入 grouped
+      grouped.profile = [...active, ...unclassified];
+
+      // 2.4 overridden 记入 filtered
+      for (const record of overridden) {
+        filtered.push({
+          recordId: record.id,
+          reason: "overridden_by_layer" as FilteredReason,
+          semanticType: "profile",
+          metadata: {
+            overriddenBy: record.overriddenBy,
+            profileDimension: record.profileDimension,
+          },
+        });
+      }
+    }
+
+    // 3. 其他类型直接复制
+    for (const type of Object.keys(byType) as MemorySemanticType[]) {
+      if (type !== "profile") {
+        grouped[type] = byType[type];
+      }
     }
 
     return { grouped, filtered };

@@ -1,7 +1,7 @@
 /**
  * 配置验证和友好错误提示测试
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { memoryConfigSchema } from "./config.js";
 
 describe("配置验证和错误提示", () => {
@@ -182,6 +182,88 @@ describe("配置验证和错误提示", () => {
 
       expect(() => memoryConfigSchema.parse(config)).toThrow(/环境变量 NONEXISTENT_PG_PASSWORD 未设置/);
       expect(() => memoryConfigSchema.parse(config)).toThrow(/postgres.password/);
+    });
+  });
+
+  describe("环境变量名白名单（防止占位符注入）", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("非法变量名（含 '-'）应保留占位符原样并触发 warning", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const config = {
+        embedding: {
+          apiKey: "${BAD-NAME}",
+          baseURL: "https://api.openai.com/v1",
+        },
+      };
+
+      const result = memoryConfigSchema.parse(config);
+      // 占位符未被替换为环境变量值，原样保留
+      expect(result.embedding.apiKey).toBe("${BAD-NAME}");
+      // 已发出告警
+      expect(warnSpy).toHaveBeenCalled();
+      const message = warnSpy.mock.calls[0]?.[0] as string;
+      expect(message).toMatch(/Ignoring invalid env var placeholder/);
+      expect(message).toContain("${BAD-NAME}");
+    });
+
+    it("非法变量名（含分号 / 引号 / 空格）保持原样且不查询 process.env", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const malicious = "${'; DROP TABLE; --}";
+      const config = {
+        embedding: {
+          apiKey: malicious,
+          baseURL: "https://api.openai.com/v1",
+        },
+      };
+
+      const result = memoryConfigSchema.parse(config);
+      expect(result.embedding.apiKey).toBe(malicious);
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it("小写变量名也视为非法（POSIX 习惯：仅大写 / 数字 / 下划线）", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const config = {
+        embedding: {
+          apiKey: "${lowercase_var}",
+          baseURL: "https://api.openai.com/v1",
+        },
+      };
+
+      const result = memoryConfigSchema.parse(config);
+      expect(result.embedding.apiKey).toBe("${lowercase_var}");
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it("数字开头的变量名视为非法", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const config = {
+        embedding: {
+          apiKey: "${1ABC}",
+          baseURL: "https://api.openai.com/v1",
+        },
+      };
+
+      const result = memoryConfigSchema.parse(config);
+      expect(result.embedding.apiKey).toBe("${1ABC}");
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it("合法变量名仍按原逻辑解析", () => {
+      process.env.VALID_ENV_NAME_OK = "resolved-value";
+      const config = {
+        embedding: {
+          apiKey: "${VALID_ENV_NAME_OK}",
+          baseURL: "https://api.openai.com/v1",
+        },
+      };
+
+      const result = memoryConfigSchema.parse(config);
+      expect(result.embedding.apiKey).toBe("resolved-value");
+      delete process.env.VALID_ENV_NAME_OK;
     });
   });
 });

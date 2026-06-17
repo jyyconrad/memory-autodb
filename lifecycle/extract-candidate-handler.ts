@@ -15,7 +15,9 @@
  *
  * 铁律（§3.1）：LLM 只产信号，validator 裁决。LLM 抽取的每条候选都必须经
  * lifecycle/candidate-validator.ts 的 validateCandidate 11 闸门校验后才进候选区；
- * validator 拒绝的不入库。heuristic 路径维持原有 decideAdmission 准入逻辑不变。
+ * validator 拒绝的不入库。准入路由统一由 valueScore 8 维决策器裁决：
+ * LLM 与 heuristic 两条路径都走 admission-decision.ts decideAdmission（8 维加权 + §6.2 阈值带），
+ * heuristic 路径构造等价 ValidatedCandidate 后复用同一决策器，确保两路产出同一套 AdmissionRoute。
  *
  * 关键边界（Milestone C 验收 1）：
  * - 自动抽取（intent=auto）一律进 candidate（pending），绝不直配 active 主库；
@@ -26,7 +28,6 @@
  * 向后兼容：deps.llmClient 为可选；不注入时行为与历史纯 heuristic 完全一致。
  */
 
-import { decideAdmission } from "./candidate-types.js";
 import type { CandidateRepository } from "./candidate-types.js";
 import type { TypeExtractor } from "./type-extractor.js";
 import {
@@ -35,8 +36,10 @@ import {
   type RawCandidate,
   type ScopeLevel,
   type Temporality,
+  type ValidatedCandidate,
 } from "./candidate-validator.js";
 import type { MemoryScope, MemorySemanticType } from "../core/types.js";
+import { inferProfileLayer } from "../core/profile-layer.js";
 import type { JobRecord } from "../storage/repositories/types.js";
 import type { JobHandler } from "../server/workers.js";
 import type {
@@ -44,6 +47,10 @@ import type {
   LlmCompletionMessage,
   SimpleJsonSchema,
 } from "../processing/llm-client.js";
+import {
+  decideAdmission as decideAdmissionV2,
+  type AdmissionContext,
+} from "./admission-decision.js";
 
 export interface ExtractCandidateHandlerDeps {
   extractor: TypeExtractor;
@@ -274,6 +281,44 @@ function toRawCandidate(
 }
 
 /**
+ * 从 MemoryScope 推断 sourceScope 上界（§3.1 闸门 11，D-04 6 档 scope）。
+ *
+ * 推断规则（由窄到宽）：
+ * - 有 sessionId → session（最窄，单次会话）
+ * - 有 projectId（且无 sessionId）→ project（项目级）
+ * - 有 workspaceId（且无 projectId）→ workspace（工作区级）
+ * - 有 appId（且无上述）→ app（应用级）
+ * - 有 userId（且无上述）→ user（用户级）
+ * - 其他 → project（兜底，scope 必带 projectId）
+ *
+ * 设计来源：docs/04-design/04.2-detail/memory-system-unified-design.md §3.1 闸门 11。
+ */
+function inferSourceScope(scope: MemoryScope): ScopeLevel {
+  // session 最窄：sessionId 存在时优先取 session
+  if (scope.sessionId && scope.sessionId.trim().length > 0) {
+    return "session";
+  }
+  // project：scope 必带 projectId，且 projectId 非空时取 project
+  if (scope.projectId && scope.projectId.trim().length > 0) {
+    return "project";
+  }
+  // workspace：workspaceId 存在时取 workspace
+  if (scope.workspaceId && scope.workspaceId.trim().length > 0) {
+    return "workspace";
+  }
+  // app：appId 存在时取 app
+  if (scope.appId && scope.appId.trim().length > 0) {
+    return "app";
+  }
+  // user：userId 存在时取 user
+  if (scope.userId && scope.userId.trim().length > 0) {
+    return "user";
+  }
+  // 兜底：默认 project（向后兼容，历史 scope 必带 projectId）
+  return "project";
+}
+
+/**
  * 构造 §2.3 user message。
  * 提供单一事件 id（eventId）供 LLM 在 evidence.eventIds 中引用，并与 source.eventIds
  * 对齐，使闸门 2 的 eventIds 子集校验可通过；真正的证据裁决靠 quote 的源文本定位。
@@ -312,12 +357,16 @@ async function tryLlmExtract(
     traceId?: string;
     intent?: string;
   },
+  audit?: ExtractCandidateHandlerDeps["audit"],
 ): Promise<CandidateSpec[] | null> {
   const { scope, text, traceId, intent } = args;
-  // 事件 id：用 traceId 关联原始 observation；缺省给确定性占位。
-  const eventId = traceId ?? "obs-0";
-  // source.scope 上界保守取 project（scope 必带 projectId）；闸门 11 据此收窄越界 targetScope。
-  const sourceScope: ScopeLevel = "project";
+  // P1-Q3 修复：eventId 使用真实 traceId，不再用占位符 "obs-0"。
+  // traceId 由上游 observe_light 生成（randomUUID），关联 observation 与候选的完整证据链。
+  // 无 traceId 时用 "unknown-event"（保证 eventIds 非空，满足 validator 闸门 2 基本要求）。
+  const eventId = traceId ?? "unknown-event";
+  // P1-Q3 修复：sourceScope 动态推断，不再硬编码 "project"。
+  // 根据 scope.sessionId/projectId/workspaceId 推断实际 scope 上界，使闸门 11 能正确收窄 targetScope。
+  const sourceScope: ScopeLevel = inferSourceScope(scope);
   const source: CandidateSource = {
     text,
     scope: sourceScope,
@@ -334,9 +383,23 @@ async function tryLlmExtract(
     result = await llmClient.extractStructured<LlmExtractionResult>(
       messages,
       CANDIDATE_SCHEMA,
+      { modelType: "extraction" }, // 使用抽取模型
     );
-  } catch {
-    // §10.4：LLM 不可用 / schema 校验失败 / 超时 → fallback heuristic（链路不断）。
+  } catch (err) {
+    // §10.4：LLM 不可用 / schema 校验失败 / 超时 → 记录审计日志并 fallback heuristic（链路不断）。
+    if (audit) {
+      await audit({
+        scope,
+        action: "llm_extraction_failed",
+        targetId: traceId,
+        metadata: {
+          textLength: text.length,
+          error: err instanceof Error ? err.message : String(err),
+          fallbackTo: "heuristic",
+          intent: intent ?? "auto",
+        },
+      });
+    }
     return null;
   }
 
@@ -349,6 +412,20 @@ async function tryLlmExtract(
     if (verdict.rejected) {
       continue;
     }
+
+    // P1-Q4 修复：使用 valueScore 8 维准入决策（替换旧 confidence-based 逻辑）
+    const admissionContext: AdmissionContext = {
+      intent: intent ?? "auto",
+      sourceKind: "session_user", // LLM 抽取来自会话
+      hasConflict: false, // 首期不做冲突检测，待 P2 接入
+    };
+    const admissionResult = decideAdmissionV2(verdict, admissionContext);
+
+    // drop 路由：不值得记，跳过入库
+    if (admissionResult.route === "drop") {
+      continue;
+    }
+
     specs.push({
       text: verdict.text,
       semanticType: verdict.semanticType,
@@ -359,7 +436,9 @@ async function tryLlmExtract(
       extractor: "llm",
       metadata: {
         intent: intent ?? "auto",
-        admission: "llm_validated",
+        admission: admissionResult.route, // P1-Q4：记录实际路由结果
+        admissionReason: admissionResult.reason,
+        valueScore: admissionResult.valueScore,
         salience: verdict.salience,
         temporality: verdict.temporality,
         targetScope: verdict.targetScope,
@@ -369,7 +448,9 @@ async function tryLlmExtract(
       },
       auditMetadata: {
         semanticType: verdict.semanticType,
-        admission: "llm_validated",
+        admission: admissionResult.route, // P1-Q4：审计记录路由
+        admissionReason: admissionResult.reason,
+        valueScore: admissionResult.valueScore,
         traceId,
         riskFlags: verdict.riskFlags,
         evidenceOnly: verdict.evidenceOnly,
@@ -381,8 +462,16 @@ async function tryLlmExtract(
 }
 
 /**
- * heuristic 降级路径（§10.4 候选提取降级目标）：维持历史 decideAdmission 准入逻辑。
- * 敏感内容在 extractor 源头已过滤（返回 []）。route=drop 不入候选；其余 v0.1 统一 pending。
+ * heuristic 降级路径（§10.4 候选提取降级目标）：接入统一 admission 决策（评审 #19）。
+ *
+ * 评审 #19 修复：heuristic 路径不再用旧的 confidence-based decideAdmission（candidate-types.ts），
+ * 改为与 LLM 路径一致，统一走 admission-decision.ts 的 decideAdmissionV2（valueScore 8 维 + §6.2 决策树），
+ * 保证两条路径产出同一套标准 AdmissionRoute（drop/candidate/candidate_low_priority/active/evidence_only）。
+ *
+ * heuristic 候选没有 LLM 的 evidence.quote，因此不走 validateCandidate 11 闸门（闸门 2 会因 quote 缺失而拒绝），
+ * 而是构造等价的 ValidatedCandidate 直接喂给 decideAdmissionV2。敏感内容已在 extractor 源头过滤（返回 []）。
+ *
+ * experience 缺因果链（hasWhy）的候选按设计降级为 evidence_only（§2 表「缺因果链时降级」），不进入 experience 晋升链。
  */
 async function heuristicExtract(
   deps: ExtractCandidateHandlerDeps,
@@ -403,16 +492,44 @@ async function heuristicExtract(
     hints: { explicitSave: intent === "remember" },
   });
 
+  const sourceScope: ScopeLevel = inferSourceScope(scope);
+  const admissionContext: AdmissionContext = {
+    intent: intent ?? "auto",
+    sourceKind: "agent_output", // heuristic 抽取来自 agent 会话过程
+    hasConflict: false, // 首期不做冲突检测，待 P2 接入
+  };
+
   const specs: CandidateSpec[] = [];
   for (const candidate of extracted) {
-    const decision = decideAdmission(candidate.semanticType, candidate.confidence, candidate.text, {
-      hasWhy: candidate.hasWhy,
-      hasOutcome: candidate.hasOutcome,
-    });
-    // route=drop 不入候选；其余（memory/candidate）v0.1 统一进 pending。
-    if (decision.route === "drop") {
+    // 无 semanticType 的候选无法计算 typePrior（actionability 维度），归入 experience（兜底情景记忆）。
+    const semanticType: MemorySemanticType = candidate.semanticType ?? "experience";
+
+    // experience 缺因果链 → 降级 evidence_only（不进入 experience 晋升链，§2）。
+    const evidenceOnly = semanticType === "experience" && candidate.hasWhy !== true;
+
+    // 构造等价 ValidatedCandidate，复用统一 admission 决策（与 LLM 路径同源）。
+    const synthetic: ValidatedCandidate = {
+      rejected: false,
+      text: candidate.text,
+      semanticType,
+      // heuristic confidence 作 salience 原始信号，最终 valueScore 由系统重算。
+      salience: candidate.confidence,
+      // heuristic 无 temporality 信号：有因果链/结果的经验视为持久，否则 ephemeral。
+      temporality: candidate.hasWhy || candidate.hasOutcome ? "persistent" : "ephemeral",
+      crossContextual: false,
+      targetScope: sourceScope,
+      evidence: { quote: candidate.text, eventIds: [] },
+      riskFlags: [],
+      evidenceOnly,
+    };
+
+    const admissionResult = decideAdmissionV2(synthetic, admissionContext);
+
+    // route=drop 不入候选
+    if (admissionResult.route === "drop") {
       continue;
     }
+
     specs.push({
       text: candidate.text,
       semanticType: candidate.semanticType,
@@ -420,8 +537,19 @@ async function heuristicExtract(
       confidence: candidate.confidence,
       reason: candidate.reason,
       extractor: deps.extractor.name,
-      metadata: { ...(candidate.metadata ?? {}), intent: intent ?? "auto", admission: decision.reason },
-      auditMetadata: { semanticType: candidate.semanticType, admission: decision.reason },
+      metadata: {
+        ...(candidate.metadata ?? {}),
+        intent: intent ?? "auto",
+        admission: admissionResult.route, // 评审 #19：记录标准 AdmissionRoute
+        admissionReason: admissionResult.reason,
+        valueScore: admissionResult.valueScore,
+      },
+      auditMetadata: {
+        semanticType: candidate.semanticType,
+        admission: admissionResult.route,
+        admissionReason: admissionResult.reason,
+        valueScore: admissionResult.valueScore,
+      },
     });
   }
   return specs;
@@ -446,6 +574,16 @@ async function persistCandidates(
       continue;
     }
 
+    // D-13: profile 类型自动推断 profileLayer
+    let enrichedMetadata = spec.metadata;
+    if (spec.semanticType === "profile") {
+      const profileLayer = inferProfileLayer(spec.text, scope);
+      enrichedMetadata = {
+        ...spec.metadata,
+        profileLayer,
+      };
+    }
+
     const record = await deps.candidates.enqueue({
       scope,
       text: spec.text,
@@ -455,7 +593,7 @@ async function persistCandidates(
       reason: spec.reason,
       evidenceIds: traceId ? [traceId] : [],
       extractor: spec.extractor,
-      metadata: spec.metadata,
+      metadata: enrichedMetadata,
     });
     existingTexts.add(spec.text);
     created += 1;
@@ -485,7 +623,11 @@ export function createExtractCandidateHandler(
 
     // §0.8：优先 LLM 异步抽取路径；llmClient 不可用 / 失败时 fallback heuristic（§10.4）。
     if (deps.llmClient?.available) {
-      const llmSpecs = await tryLlmExtract(deps.llmClient, { scope, text, traceId, intent });
+      const llmSpecs = await tryLlmExtract(
+        deps.llmClient,
+        { scope, text, traceId, intent },
+        deps.audit,
+      );
       if (llmSpecs !== null) {
         // LLM 成功（候选已过 validator 铁律）：直接入库，不再走 heuristic。
         return { created: await persistCandidates(deps, scope, traceId, llmSpecs) };

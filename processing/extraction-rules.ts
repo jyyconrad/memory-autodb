@@ -72,7 +72,7 @@ export type ProfileWhitelistDimension =
 export const PROMPT_INJECTION_PATTERNS: readonly RegExp[] = [
   /忽略(之前|前面|上面|以上).{0,4}(的)?指令/,
   /你现在是|从现在起你/,
-  /\bignore\s+(all\s+)?(previous|prior|above)\s+(instructions|prompts?)\b/i,
+  /\bignore\s+(all|any|previous|prior|above)(\s+(?:previous|prior|above))?\s+(instructions|prompts?)\b/i,
   /\byou\s+are\s+now\b/i,
   /(^|\n|\s)system\s*[:：]/i,
   /忘记(你)?(之前|以上|所有)的?(设定|指令|规则)/,

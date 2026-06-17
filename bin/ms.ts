@@ -19,6 +19,9 @@ import { registerDoctorCliCommands } from "../adapters/openclaw/cli-doctor.js";
 import { registerMcpCliCommands } from "../adapters/openclaw/cli-mcp.js";
 import { registerMemoryServerCliCommands } from "../adapters/openclaw/cli.js";
 import { registerProjectCliCommands } from "../adapters/openclaw/cli-project.js";
+import { registerWhyCliCommands } from "../adapters/openclaw/cli-why.js";
+import { registerForgetCliCommands } from "../adapters/openclaw/cli-forget.js";
+import { registerRecallCliCommands } from "../adapters/openclaw/cli-recall.js";
 import { registerMigrateHomeCommand } from "../adapters/openclaw/cli-migrate-home.js";
 import { AgentFastPathService } from "../api/agent-fast-path.js";
 import { extractRecords } from "../adapters/openclaw/agent-service-helper.js";
@@ -176,6 +179,22 @@ async function main(): Promise<void> {
   registerProjectCliCommands(program, {
     service: memoryService,
     getRecordCount: () => db.count(),
+  });
+
+  registerWhyCliCommands(program, {
+    service: memoryService,
+    scope: defaultScope,
+  });
+
+  registerForgetCliCommands(program, {
+    repository,
+    defaultScope,
+    embeddings,
+  });
+
+  registerRecallCliCommands(program, {
+    service: memoryService,
+    defaultScope,
   });
 
   registerMigrateHomeCommand(program);

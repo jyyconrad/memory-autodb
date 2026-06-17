@@ -46,7 +46,14 @@ export type FilteredReason =
   | "conflict_unresolved"
   | "budget_exceeded"
   | "no_semantic_type"
-  | "sensitive_filtered";
+  | "sensitive_filtered"
+  // 召回阶段过滤原因（recall-filter）：
+  // salience（重算 importance）低于注入阈值
+  | "salience_below_threshold"
+  // 与已选中的更高分记忆近重复，被去重合并
+  | "dedup_merged"
+  // D-13 profile 分层过滤：同 profileDimension 被更高层覆盖
+  | "overridden_by_layer";
 
 /**
  * FilteredEntry: 单条被过滤记忆的解释。
@@ -56,6 +63,7 @@ export interface FilteredEntry {
   recordId?: string;
   reason: FilteredReason;
   semanticType?: MemorySemanticType;
+  metadata?: Record<string, unknown>;
 }
 
 /**

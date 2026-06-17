@@ -41,14 +41,29 @@ export type MemoryConfig = {
   /**
    * LLM chat completion 配置（可选）。
    * 提供后即可启用摘要 / 抽取等生成式能力；未提供时上层降级到 NullLlmClient。
+   *
+   * 模型分层配置：
+   * - extractionModel: 结构化抽取（候选记忆提取）
+   * - summarizationModel: 摘要生成（Memory Tree sealing）
+   * - reasoningModel: 推理判断（faithfulness 校验、晋升决策）
+   *
+   * temperature 可选配置（0~2），缺省由调用方决定（结构化任务通常用 0.0）。
    */
   llm?: {
     provider: "openai";
+    /** 默认模型（兜底） */
     model: string;
     baseURL?: string;
     apiKey: string;
     maxTokens?: number;
+    /** 采样温度（0~2），可选 */
     temperature?: number;
+    /** 结构化抽取模型（候选记忆提取） */
+    extractionModel?: string;
+    /** 摘要生成模型（Memory Tree sealing） */
+    summarizationModel?: string;
+    /** 推理判断模型（faithfulness 校验、晋升决策） */
+    reasoningModel?: string;
   };
   mode?: "embedded" | "server" | "remote" | "backend-proxy";
   server?: {
@@ -113,6 +128,38 @@ export type MemoryConfig = {
    * 根据内容自动路由到对应的知识库表
    */
   routingRules?: RoutingRule[];
+  /**
+   * Memory Tree 配置
+   */
+  tree?: {
+    summaryFaithfulness?: {
+      /** 校验模式（D-07：P2 起默认 high_risk） */
+      mode?: "off" | "sampled" | "high_risk" | "always";
+      /** 抽样比例（sampled 模式下生效） */
+      sampleRate?: number;
+      /** Judge 模型（可选，缺省使用 llm.reasoningModel） */
+      judgeModel?: string;
+      /** 校验失败时的处理动作 */
+      failAction?: "fallback_extractive" | "mark_untrusted" | "retry";
+    };
+  };
+  /**
+   * 候选自动晋升配置（§11.1 / §13）
+   */
+  promotion?: {
+    /** 是否启用自动晋升（默认 true） */
+    enabled?: boolean;
+    /** 最少证据数（默认 5） */
+    minEvidenceCount?: number;
+    /** 最少观察时间跨度（天，默认 3） */
+    minTimeSpanDays?: number;
+    /** 泛化阈值：达到此阈值才聚合（默认 5） */
+    generalizeThreshold?: number;
+    /** 语义相似度阈值（默认 0.78） */
+    minSimilarity?: number;
+    /** 是否启用冲突自动降级（默认 true） */
+    autoConflictDowngrade?: boolean;
+  };
 };
 
 /**
@@ -245,9 +292,25 @@ export function vectorDimsForModel(model: string): number {
  * @param fieldName 字段名，用于生成友好的错误信息
  * @returns 解析后的实际值
  * @throws 当环境变量未设置时抛出友好的配置错误
+ *
+ * 安全约束：占位符内的变量名必须匹配 `ENV_NAME_RE`（POSIX 习惯：大写字母 / 数字 /
+ * 下划线，且首字符不能是数字）。不匹配时保留原 `${...}` 不替换并打印 warning，
+ * 避免把可疑字符串（如 `${'; DROP TABLE; --}` 或带空格的命令片段）当作 env key
+ * 透传到 process.env 查询。
  */
+const ENV_NAME_RE = /^[A-Z_][A-Z0-9_]*$/;
+
 function resolveEnvVars(value: string, fieldName?: string): string {
-  return value.replace(/\$\{([^}]+)\}/g, (_, envVar) => {
+  return value.replace(/\$\{([^}]+)\}/g, (placeholder, envVar) => {
+    if (typeof envVar !== "string" || !ENV_NAME_RE.test(envVar)) {
+      // 非法变量名：保留原样并告警，不破坏整体配置加载（保持向后兼容）。
+      const field = fieldName ? ` (${fieldName})` : "";
+      console.warn(
+        `[memory-autodb] Ignoring invalid env var placeholder${field}: ${placeholder}. ` +
+          `Allowed pattern: ${ENV_NAME_RE.source}`,
+      );
+      return placeholder;
+    }
     const envValue = process.env[envVar];
     if (!envValue) {
       const field = fieldName ? ` (${fieldName})` : "";
@@ -294,7 +357,7 @@ export const memoryConfigSchema = {
     const cfg = value as Record<string, unknown>;
     assertAllowedKeys(
       cfg,
-      ["embedding", "llm", "mode", "server", "features", "dbType", "dbPath", "supabase", "postgres", "scanner", "batchProcessing", "autoCapture", "autoRecall", "recallIncludeDocuments", "captureMaxChars", "tables", "knowledgeBases", "routingRules"],
+      ["embedding", "llm", "mode", "server", "features", "dbType", "dbPath", "supabase", "postgres", "scanner", "batchProcessing", "autoCapture", "autoRecall", "recallIncludeDocuments", "captureMaxChars", "tables", "knowledgeBases", "routingRules", "tree"],
       "memory config",
     );
 
@@ -314,7 +377,7 @@ export const memoryConfigSchema = {
     if (llm) {
       assertAllowedKeys(
         llm,
-        ["provider", "model", "baseURL", "apiKey", "maxTokens", "temperature"],
+        ["provider", "model", "baseURL", "apiKey", "maxTokens", "temperature", "extractionModel", "summarizationModel", "reasoningModel"],
         "llm config",
       );
       if (typeof llm.apiKey !== "string" || !llm.apiKey) {
@@ -331,6 +394,15 @@ export const memoryConfigSchema = {
         (typeof llm.maxTokens !== "number" || !Number.isInteger(llm.maxTokens) || llm.maxTokens < 1)
       ) {
         throw new Error("llm.maxTokens must be a positive integer");
+      }
+      if (llm.extractionModel !== undefined && typeof llm.extractionModel !== "string") {
+        throw new Error("llm.extractionModel must be a string");
+      }
+      if (llm.summarizationModel !== undefined && typeof llm.summarizationModel !== "string") {
+        throw new Error("llm.summarizationModel must be a string");
+      }
+      if (llm.reasoningModel !== undefined && typeof llm.reasoningModel !== "string") {
+        throw new Error("llm.reasoningModel must be a string");
       }
       if (
         llm.temperature !== undefined &&
@@ -520,6 +592,36 @@ export const memoryConfigSchema = {
       }
     }
 
+    // Validate tree config if provided
+    const tree = cfg.tree as Record<string, unknown> | undefined;
+    if (tree) {
+      assertAllowedKeys(tree, ["summaryFaithfulness"], "tree config");
+      const summaryFaithfulness = tree.summaryFaithfulness as Record<string, unknown> | undefined;
+      if (summaryFaithfulness) {
+        assertAllowedKeys(summaryFaithfulness, ["mode", "sampleRate", "judgeModel", "failAction"], "tree.summaryFaithfulness config");
+        if (summaryFaithfulness.mode !== undefined) {
+          const validModes = ["off", "sampled", "high_risk", "always"];
+          if (typeof summaryFaithfulness.mode !== "string" || !validModes.includes(summaryFaithfulness.mode)) {
+            throw new Error(`tree.summaryFaithfulness.mode must be one of: ${validModes.join(", ")}`);
+          }
+        }
+        if (summaryFaithfulness.sampleRate !== undefined) {
+          if (typeof summaryFaithfulness.sampleRate !== "number" || summaryFaithfulness.sampleRate < 0 || summaryFaithfulness.sampleRate > 1) {
+            throw new Error("tree.summaryFaithfulness.sampleRate must be between 0 and 1");
+          }
+        }
+        if (summaryFaithfulness.judgeModel !== undefined && typeof summaryFaithfulness.judgeModel !== "string") {
+          throw new Error("tree.summaryFaithfulness.judgeModel must be a string");
+        }
+        if (summaryFaithfulness.failAction !== undefined) {
+          const validActions = ["fallback_extractive", "mark_untrusted", "retry"];
+          if (typeof summaryFaithfulness.failAction !== "string" || !validActions.includes(summaryFaithfulness.failAction)) {
+            throw new Error(`tree.summaryFaithfulness.failAction must be one of: ${validActions.join(", ")}`);
+          }
+        }
+      }
+    }
+
     const captureMaxChars =
       typeof cfg.captureMaxChars === "number" ? Math.floor(cfg.captureMaxChars) : undefined;
     if (
@@ -543,6 +645,9 @@ export const memoryConfigSchema = {
         baseURL: typeof llm.baseURL === "string" ? resolveEnvVars(llm.baseURL, "llm.baseURL") : undefined,
         maxTokens: typeof llm.maxTokens === "number" ? llm.maxTokens : undefined,
         temperature: typeof llm.temperature === "number" ? llm.temperature : undefined,
+        extractionModel: typeof llm.extractionModel === "string" ? llm.extractionModel : undefined,
+        summarizationModel: typeof llm.summarizationModel === "string" ? llm.summarizationModel : undefined,
+        reasoningModel: typeof llm.reasoningModel === "string" ? llm.reasoningModel : undefined,
       } : undefined,
       mode: mode as MemoryConfig["mode"],
       server: {
@@ -605,6 +710,18 @@ export const memoryConfigSchema = {
         customCategories: (knowledgeBases.customCategories as string[] | undefined),
       } : undefined,
       routingRules: routingRules ? routingRules as RoutingRule[] : DEFAULT_ROUTING_RULES,
+      tree: tree ? {
+        summaryFaithfulness: tree.summaryFaithfulness ? {
+          mode: (tree.summaryFaithfulness as Record<string, unknown>).mode as "off" | "sampled" | "high_risk" | "always" | undefined ?? "high_risk",
+          sampleRate: (tree.summaryFaithfulness as Record<string, unknown>).sampleRate as number | undefined ?? 0.05,
+          judgeModel: (tree.summaryFaithfulness as Record<string, unknown>).judgeModel as string | undefined,
+          failAction: (tree.summaryFaithfulness as Record<string, unknown>).failAction as "fallback_extractive" | "mark_untrusted" | "retry" | undefined ?? "fallback_extractive",
+        } : {
+          mode: "high_risk",
+          sampleRate: 0.05,
+          failAction: "fallback_extractive",
+        },
+      } : undefined,
     };
   },
   uiHints: {
