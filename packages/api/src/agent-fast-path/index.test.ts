@@ -6,12 +6,12 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { AgentFastPathService } from "./agent-fast-path.js";
+import { AgentFastPathService } from "./index.js";
 import type {
   MemoryRecord,
   MemoryScope,
   RecallResult,
-} from "../core/types.js";
+} from "../../../../core/types.js";
 
 const baseScope: MemoryScope = {
   tenantId: "local",

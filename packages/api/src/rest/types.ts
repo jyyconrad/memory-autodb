@@ -5,11 +5,11 @@
  * 复用同一组契约。
  */
 
-import type { MemoryConfig } from "../../config.js";
-import type { MemoryService } from "../../core/service-types.js";
-import type { GraphQueryService } from "../../graph/query.js";
-import type { ConsoleApi } from "../../console/types.js";
-import type { AgentFastPathService } from "../../api/agent-fast-path.js";
+import type { MemoryConfig } from "../../../../config.js";
+import type { MemoryService } from "../../../../core/service-types.js";
+import type { GraphQueryService } from "../../../../graph/query.js";
+import type { ConsoleApi } from "../../../../console/types.js";
+import type { AgentFastPathService } from "../agent-fast-path/index.js";
 
 export type RestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | string;
 

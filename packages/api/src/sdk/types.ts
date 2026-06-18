@@ -10,8 +10,8 @@ import type {
   RecallInput,
   StoreMemoryInput,
   StoreMemoryResult,
-} from "../../core/service-types.js";
-import type { ContextBlock, RecallResult } from "../../core/types.js";
+} from "../../../../core/service-types.js";
+import type { ContextBlock, RecallResult } from "../../../../core/types.js";
 
 export type MemoryClientFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 

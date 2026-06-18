@@ -1,11 +1,11 @@
 import { describe, expect, test } from "vitest";
-import type { MemoryService } from "../../core/service-types.js";
-import type { ContextBlock, MemoryRecord, RecallResult } from "../../core/types.js";
-import { InMemoryGraphRepository } from "../../graph/repository.js";
-import { GraphQueryService } from "../../graph/query.js";
-import { createConsoleApi } from "../../console/api.js";
-import { InMemoryCandidateRepository } from "../../lifecycle/candidate-repository.js";
-import { CandidateReviewService } from "../../lifecycle/candidate-review.js";
+import type { MemoryService } from "../../../../core/service-types.js";
+import type { ContextBlock, MemoryRecord, RecallResult } from "../../../../core/types.js";
+import { InMemoryGraphRepository } from "../../../../graph/repository.js";
+import { GraphQueryService } from "../../../../graph/query.js";
+import { createConsoleApi } from "../../../../console/api.js";
+import { InMemoryCandidateRepository } from "../../../../lifecycle/candidate-repository.js";
+import { CandidateReviewService } from "../../../../lifecycle/candidate-review.js";
 import { createRestRouter } from "./router.js";
 
 const scope = {

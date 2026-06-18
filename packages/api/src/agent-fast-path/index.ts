@@ -14,21 +14,21 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { normalizeScope } from "../core/scope.js";
-import { globalSlotContextBuilder, type SlotContextBuilder } from "../core/slot-context-builder.js";
+import { normalizeScope } from "../../../../core/scope.js";
+import { globalSlotContextBuilder, type SlotContextBuilder } from "../../../../core/slot-context-builder.js";
 import type {
   AgentTaskContextRequest,
   ContextFastResponse,
-} from "../core/semantic-types.js";
-import type { MemoryRepository } from "../core/service-types.js";
+} from "../../../core/src/domain/semantic-types.js";
+import type { MemoryRepository } from "../../../../core/service-types.js";
 import type {
   MemoryRecord,
   MemoryScope,
   MemoryScopeInput,
   RecallHit,
   RecallResult,
-} from "../core/types.js";
-import type { TreeSummaryNode } from "../tree/types.js";
+} from "../../../../core/types.js";
+import type { TreeSummaryNode } from "../../../../tree/types.js";
 
 export type { AgentTaskContextRequest };
 
