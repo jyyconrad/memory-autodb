@@ -10,7 +10,7 @@ import {
   discoverJsonlSources,
   parseJsonlFile,
   type JsonlSourceOptions,
-} from "../jsonl-parser.js";
+} from "../../../packages/core/src/ingest/sources/jsonl-parser.js";
 
 const OPTIONS: JsonlSourceOptions = {
   provider: "codex",
