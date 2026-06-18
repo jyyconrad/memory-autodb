@@ -20,8 +20,8 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import type { AgentFastPathService } from "../../api/agent-fast-path.js";
-import type { MemoryService } from "../../core/service-types.js";
+import type { AgentFastPathService } from "../../api/src/agent-fast-path/index.js";
+import type { MemoryService } from "../../../core/service-types.js";
 import { createMcpMemoryTools, type McpMemoryTool } from "./tools.js";
 
 const SERVER_NAME = "mengshu";

@@ -5,7 +5,7 @@
  * 固化工具契约，避免过早引入 MCP SDK 依赖。
  */
 
-import type { MemoryService } from "../../core/service-types.js";
+import type { MemoryService } from "../../../core/service-types.js";
 import { createMcpMemoryTools, type McpMemoryTool } from "./tools.js";
 
 export interface McpMemoryServer {

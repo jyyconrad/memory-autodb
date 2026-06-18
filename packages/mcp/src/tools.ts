@@ -10,19 +10,19 @@
  *   - 不暴露内部治理工具（候选区/树/图谱/job 管理）。
  */
 
-import type { AgentFastPathService } from "../../api/agent-fast-path.js";
+import type { AgentFastPathService } from "../../api/src/agent-fast-path/index.js";
 import type {
   AgentLookupRequest,
   AgentObserveLightRequest,
   AgentTaskContextRequest,
-} from "../../api/agent-fast-path.js";
+} from "../../api/src/agent-fast-path/index.js";
 import type {
   BuildContextInput,
   DeleteMemoryInput,
   MemoryService,
   RecallInput,
   StoreMemoryInput,
-} from "../../core/service-types.js";
+} from "../../../core/service-types.js";
 
 /** JSON Schema 对象（MCP inputSchema 形态，保持宽松类型） */
 export type JsonSchemaObject = Record<string, unknown>;

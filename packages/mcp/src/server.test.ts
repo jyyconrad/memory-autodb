@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { MemoryService } from "../../core/service-types.js";
+import type { MemoryService } from "../../../core/service-types.js";
 import { createMcpMemoryServer } from "./server.js";
 
 const service = {

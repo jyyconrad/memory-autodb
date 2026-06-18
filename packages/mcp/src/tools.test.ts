@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import type { MemoryService } from "../../core/service-types.js";
-import type { ContextBlock, MemoryRecord, RecallResult } from "../../core/types.js";
+import type { MemoryService } from "../../../core/service-types.js";
+import type { ContextBlock, MemoryRecord, RecallResult } from "../../../core/types.js";
 import { createMcpMemoryTools } from "./tools.js";
 
 const scope = {

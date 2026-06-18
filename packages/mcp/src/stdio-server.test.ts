@@ -11,7 +11,7 @@
 import { describe, expect, test } from "vitest";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { MemoryService } from "../../core/service-types.js";
+import type { MemoryService } from "../../../core/service-types.js";
 import {
   buildCallToolHandler,
   buildListToolsResult,
