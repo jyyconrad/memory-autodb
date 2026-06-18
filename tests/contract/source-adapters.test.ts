@@ -2,9 +2,9 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { codexSourceAdapter } from "./codex/adapter.js";
-import { claudeCodeSourceAdapter } from "./claude-code/adapter.js";
-import { openClawSourceAdapter } from "./openclaw/adapter.js";
+import { codexSourceAdapter } from "../../plugins/codex/sources/adapter.js";
+import { claudeCodeSourceAdapter } from "../../plugins/claude-code/sources/adapter.js";
+import { openClawSourceAdapter } from "../../plugins/openclaw/src/sources/adapter.js";
 
 let dir: string;
 
@@ -78,5 +78,13 @@ describe("source adapters", () => {
       sessionId: "session-1",
       text: "My email is user@example.com",
     });
+  });
+
+  test("legacy adapters/sources path re-exports plugin source adapters", async () => {
+    const legacy = await import("../../adapters/sources/index.js");
+
+    expect(legacy.codexSourceAdapter).toBe(codexSourceAdapter);
+    expect(legacy.claudeCodeSourceAdapter).toBe(claudeCodeSourceAdapter);
+    expect(legacy.openClawSourceAdapter).toBe(openClawSourceAdapter);
   });
 });

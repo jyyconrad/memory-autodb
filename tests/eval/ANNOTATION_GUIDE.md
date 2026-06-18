@@ -417,8 +417,8 @@ P_e = 随机一致比例
 
 ## 七、参考文档
 
-- `eval/EXPANSION_PLAN.md`：扩充计划
-- `eval/README.md`：评测基础设施
+- `tests/eval/EXPANSION_PLAN.md`：扩充计划
+- `tests/eval/README.md`：评测基础设施
 - 设计 §15.5：标注策略
 - 设计 §2.3：MemorySemanticType 定义
 - 设计 §5.4：去重关系枚举

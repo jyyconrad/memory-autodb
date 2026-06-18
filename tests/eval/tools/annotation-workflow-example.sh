@@ -4,7 +4,7 @@
 # 本脚本演示如何使用标注工具进行双人标注、一致性计算、仲裁和合并
 #
 # 使用方式：
-#   bash eval/tools/annotation-workflow-example.sh
+#   bash tests/eval/tools/annotation-workflow-example.sh
 
 set -e
 
@@ -25,16 +25,16 @@ echo "步骤 1: 双人独立标注"
 echo "----------------------------------------"
 echo
 echo "Annotator 1 ($ANNOTATOR_1) 开始标注..."
-echo "命令: node eval/tools/annotator.js annotate --suite $SUITE --annotator $ANNOTATOR_1"
+echo "命令: node tests/eval/tools/annotator.js annotate --suite $SUITE --annotator $ANNOTATOR_1"
 echo
 echo "⚠️  实际执行时，两位标注人需要在不同终端独立标注，不要讨论。"
 echo
 echo "Annotator 2 ($ANNOTATOR_2) 开始标注..."
-echo "命令: node eval/tools/annotator.js annotate --suite $SUITE --annotator $ANNOTATOR_2"
+echo "命令: node tests/eval/tools/annotator.js annotate --suite $SUITE --annotator $ANNOTATOR_2"
 echo
 echo "✓ 标注完成后会生成以下文件："
-echo "  - eval/results/${ANNOTATOR_1}_${SUITE}_${TIMESTAMP}.jsonl"
-echo "  - eval/results/${ANNOTATOR_2}_${SUITE}_${TIMESTAMP}.jsonl"
+echo "  - tests/eval/results/${ANNOTATOR_1}_${SUITE}_${TIMESTAMP}.jsonl"
+echo "  - tests/eval/results/${ANNOTATOR_2}_${SUITE}_${TIMESTAMP}.jsonl"
 echo
 read -p "按回车继续到下一步..."
 echo
@@ -43,9 +43,9 @@ echo
 echo "步骤 2: 计算一致性"
 echo "----------------------------------------"
 echo
-FILE_1="eval/results/${ANNOTATOR_1}_${SUITE}_${TIMESTAMP}.jsonl"
-FILE_2="eval/results/${ANNOTATOR_2}_${SUITE}_${TIMESTAMP}.jsonl"
-echo "命令: node eval/tools/annotator.js consistency \\"
+FILE_1="tests/eval/results/${ANNOTATOR_1}_${SUITE}_${TIMESTAMP}.jsonl"
+FILE_2="tests/eval/results/${ANNOTATOR_2}_${SUITE}_${TIMESTAMP}.jsonl"
+echo "命令: node tests/eval/tools/annotator.js consistency \\"
 echo "  --suite $SUITE \\"
 echo "  --file1 $FILE_1 \\"
 echo "  --file2 $FILE_2"
@@ -59,7 +59,7 @@ echo "随机一致率 (P_e): 24.50%"
 echo "Cohen's Kappa: 0.867"
 echo "✓ 一致性优秀（>= 0.85），可直接合并"
 echo
-echo "⚠️  导出 8 个分歧样例到: eval/results/conflicts_${SUITE}_${TIMESTAMP}.json"
+echo "⚠️  导出 8 个分歧样例到: tests/eval/results/conflicts_${SUITE}_${TIMESTAMP}.json"
 echo
 read -p "按回车继续到下一步..."
 echo
@@ -68,8 +68,8 @@ echo
 echo "步骤 3: 仲裁分歧样例"
 echo "----------------------------------------"
 echo
-CONFLICT_FILE="eval/results/conflicts_${SUITE}_${TIMESTAMP}.json"
-echo "命令: node eval/tools/annotator.js arbitrate \\"
+CONFLICT_FILE="tests/eval/results/conflicts_${SUITE}_${TIMESTAMP}.json"
+echo "命令: node tests/eval/tools/annotator.js arbitrate \\"
 echo "  --conflicts $CONFLICT_FILE \\"
 echo "  --arbitrator $ARBITRATOR"
 echo
@@ -83,7 +83,7 @@ echo "Memory B: 用 Vite 因为启动快"
 echo "仲裁决定 (1/2/new, 回车=跳过): 1"
 echo "仲裁理由: B 增加了 why（因为启动快），属于增量信息，判定为 update"
 echo
-echo "✓ 仲裁完成！共 8 条，已保存到 eval/results/arbitrated_${TIMESTAMP}.json"
+echo "✓ 仲裁完成！共 8 条，已保存到 tests/eval/results/arbitrated_${TIMESTAMP}.json"
 echo
 read -p "按回车继续到下一步..."
 echo
@@ -92,9 +92,9 @@ echo
 echo "步骤 4: 合并标注结果"
 echo "----------------------------------------"
 echo
-ARBITRATED_FILE="eval/results/arbitrated_${TIMESTAMP}.json"
-OUTPUT_FILE="eval/goldens/${SUITE}-annotated.jsonl"
-echo "命令: node eval/tools/annotator.js merge \\"
+ARBITRATED_FILE="tests/eval/results/arbitrated_${TIMESTAMP}.json"
+OUTPUT_FILE="tests/eval/goldens/${SUITE}-annotated.jsonl"
+echo "命令: node tests/eval/tools/annotator.js merge \\"
 echo "  --suite $SUITE \\"
 echo "  --file1 $FILE_1 \\"
 echo "  --file2 $FILE_2 \\"
@@ -138,9 +138,9 @@ echo "计算新文件的 sha256："
 echo "命令: shasum -a 256 $OUTPUT_FILE"
 echo
 echo "示例输出:"
-echo "a1b2c3d4e5f6... eval/goldens/${SUITE}-annotated.jsonl"
+echo "a1b2c3d4e5f6... tests/eval/goldens/${SUITE}-annotated.jsonl"
 echo
-echo "手动更新 eval/goldens/manifest.json："
+echo "手动更新 tests/eval/goldens/manifest.json："
 cat <<'EOF'
 {
   "mengshu-dedup": {
@@ -177,7 +177,7 @@ echo
 echo "✓ 评测通过！"
 echo
 echo "提交代码："
-echo "git add eval/goldens/${SUITE}-annotated.jsonl eval/goldens/manifest.json"
+echo "git add tests/eval/goldens/${SUITE}-annotated.jsonl tests/eval/goldens/manifest.json"
 echo "git commit -m 'feat(eval): add human-annotated mengshu-dedup golden set (n=80, kappa=0.867)'"
 echo
 
@@ -203,4 +203,4 @@ echo "- 对 mengshu-recall-explain 进行验证（60 条，预计 3-4 小时）"
 echo "- 扩充 mengshu-tree-summary 至 50 条（P1 阶段）"
 echo "- 扩充 mengshu-conflict 至 30 条（P1 阶段）"
 echo
-echo "详见: eval/EXPANSION_PLAN.md"
+echo "详见: tests/eval/EXPANSION_PLAN.md"

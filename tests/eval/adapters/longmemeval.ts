@@ -1,5 +1,5 @@
 /**
- * eval/adapters/longmemeval — LongMemEval 数据集 adapter（占位实现）。
+ * tests/eval/adapters/longmemeval — LongMemEval 数据集 adapter（占位实现）。
  *
  * 本文件做什么：
  *   - 把 LongMemEval 官方 JSON（多轮对话 + 问题 + 答案）转换成本仓 GoldenCase。
@@ -20,7 +20,7 @@
  * 关键边界：
  *   - 实际 LongMemEval 数据集字段名可能因版本而变；本 adapter 故意做容错处理，
  *     若某字段缺失，转换中跳过该字段而不抛错。
- *   - 本文件不下载数据集，仅做格式转换。数据集获取见 eval/README.md。
+ *   - 本文件不下载数据集，仅做格式转换。数据集获取见 tests/eval/README.md。
  *   - 不要把 LongMemEval 黄金集与本仓黄金集混存一个 jsonl；
  *     用 GoldenCase.suite 区分。
  */

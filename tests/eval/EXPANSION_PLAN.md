@@ -295,7 +295,7 @@
 
 ### 3.1 标注工具需求
 
-构建轻量级标注工具（`eval/tools/annotator.ts`）：
+构建轻量级标注工具（`tests/eval/tools/annotator.ts`）：
 
 **功能**：
 1. 加载 jsonl → 渲染待标注 case
@@ -326,7 +326,7 @@ graph TD
 
 ### 3.3 标注规范文档
 
-创建 `eval/ANNOTATION_GUIDE.md`：
+创建 `tests/eval/ANNOTATION_GUIDE.md`：
 - extraction 标注规范（type/targetScope/evidence 三要素）
 - dedup 关系枚举定义（duplicate/update/conflict/related/distinct）
 - 边界 case 判定准则
@@ -373,10 +373,10 @@ graph TD
 
 | 工具 | 功能 | 预计工时 |
 |------|------|----------|
-| eval/tools/annotator.ts | CLI 标注工具 | 1 天 |
-| eval/tools/consistency.ts | 一致性计算 | 0.5 天 |
-| eval/ANNOTATION_GUIDE.md | 标注规范文档 | 0.5 天 |
-| eval/tools/export-with-metadata.ts | 导出带元数据 jsonl | 0.5 天 |
+| tests/eval/tools/annotator.ts | CLI 标注工具 | 1 天 |
+| tests/eval/tools/consistency.ts | 一致性计算 | 0.5 天 |
+| tests/eval/ANNOTATION_GUIDE.md | 标注规范文档 | 0.5 天 |
+| tests/eval/tools/export-with-metadata.ts | 导出带元数据 jsonl | 0.5 天 |
 
 ---
 
@@ -429,5 +429,5 @@ Week 5+ (P2):
 - 设计 §15.5：标注策略
 - 设计 §15.3：强制约束（确定性判定与 LLM 信号分离）
 - 设计 §15.4：误判样例与回归
-- `eval/README.md`：评测基础设施
+- `tests/eval/README.md`：评测基础设施
 - `docs/07-test/memory-evaluation-plan.md`：评测计划

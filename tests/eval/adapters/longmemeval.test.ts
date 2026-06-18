@@ -1,5 +1,5 @@
 /**
- * eval/adapters/longmemeval.test.ts
+ * tests/eval/adapters/longmemeval.test.ts
  *
  * 本文件做什么：
  *   验证 LongMemEval adapter 能加载示例 fixture 并正确转换：

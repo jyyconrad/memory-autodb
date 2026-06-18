@@ -1,8 +1,8 @@
 /**
- * eval/runners/quick-eval.test.ts
+ * tests/eval/runners/quick-eval.test.ts
  *
  * 本文件做什么：
- *   把 eval/goldens/*.jsonl 的每条 case 接到 vitest test.each 上，
+ *   把 tests/eval/goldens/*.jsonl 的每条 case 接到 vitest test.each 上，
  *   形成"每条黄金集 → 一个 vitest 用例"的回归测试。
  *
  * 核心流程：

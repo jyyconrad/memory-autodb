@@ -12,16 +12,16 @@
 
 | 文件 | 用途 | 状态 |
 |------|------|------|
-| `eval/EXPANSION_PLAN.md` | 扩充计划：P0-P2 完整路线图 | ✅ 完成 |
-| `eval/ANNOTATION_GUIDE.md` | 标注规范：type 判定、关系枚举、边界样例 | ✅ 完成 |
-| `eval/README.md` | 评测基础设施说明（已更新标注流程） | ✅ 更新 |
-| `eval/tools/annotation-workflow-example.sh` | 标注流程示例脚本 | ✅ 完成 |
+| `tests/eval/EXPANSION_PLAN.md` | 扩充计划：P0-P2 完整路线图 | ✅ 完成 |
+| `tests/eval/ANNOTATION_GUIDE.md` | 标注规范：type 判定、关系枚举、边界样例 | ✅ 完成 |
+| `tests/eval/README.md` | 评测基础设施说明（已更新标注流程） | ✅ 更新 |
+| `tests/eval/tools/annotation-workflow-example.sh` | 标注流程示例脚本 | ✅ 完成 |
 
 ### 2. 工具
 
 | 文件 | 功能 | 状态 |
 |------|------|------|
-| `eval/tools/annotator.js` | 标注工具（CLI） | ✅ 完成 |
+| `tests/eval/tools/annotator.js` | 标注工具（CLI） | ✅ 完成 |
 
 **annotator.js 功能清单**：
 - ✅ `annotate` 模式：单人标注
@@ -99,35 +99,35 @@
 
 ## 四、标注流程示例
 
-详见 `eval/tools/annotation-workflow-example.sh`，演示完整流程：
+详见 `tests/eval/tools/annotation-workflow-example.sh`，演示完整流程：
 
 ```bash
 # 1. 双人独立标注
-node eval/tools/annotator.js annotate --suite mengshu-dedup --annotator human_001
-node eval/tools/annotator.js annotate --suite mengshu-dedup --annotator human_002
+node tests/eval/tools/annotator.js annotate --suite mengshu-dedup --annotator human_001
+node tests/eval/tools/annotator.js annotate --suite mengshu-dedup --annotator human_002
 
 # 2. 计算一致性
-node eval/tools/annotator.js consistency \
+node tests/eval/tools/annotator.js consistency \
   --suite mengshu-dedup \
-  --file1 eval/results/human_001_mengshu-dedup.jsonl \
-  --file2 eval/results/human_002_mengshu-dedup.jsonl
+  --file1 tests/eval/results/human_001_mengshu-dedup.jsonl \
+  --file2 tests/eval/results/human_002_mengshu-dedup.jsonl
 
 # 3. 仲裁分歧
-node eval/tools/annotator.js arbitrate \
-  --conflicts eval/results/conflicts_mengshu-dedup.json \
+node tests/eval/tools/annotator.js arbitrate \
+  --conflicts tests/eval/results/conflicts_mengshu-dedup.json \
   --arbitrator human_003
 
 # 4. 合并结果
-node eval/tools/annotator.js merge \
+node tests/eval/tools/annotator.js merge \
   --suite mengshu-dedup \
-  --file1 eval/results/human_001_mengshu-dedup.jsonl \
-  --file2 eval/results/human_002_mengshu-dedup.jsonl \
-  --arbitrated eval/results/arbitrated.json \
-  --output eval/goldens/mengshu-dedup-annotated.jsonl
+  --file1 tests/eval/results/human_001_mengshu-dedup.jsonl \
+  --file2 tests/eval/results/human_002_mengshu-dedup.jsonl \
+  --arbitrated tests/eval/results/arbitrated.json \
+  --output tests/eval/goldens/mengshu-dedup-annotated.jsonl
 
 # 5. 更新 manifest
-shasum -a 256 eval/goldens/mengshu-dedup-annotated.jsonl
-# 手动更新 eval/goldens/manifest.json
+shasum -a 256 tests/eval/goldens/mengshu-dedup-annotated.jsonl
+# 手动更新 tests/eval/goldens/manifest.json
 
 # 6. 验证
 npm run eval:quick -- mengshu-dedup
@@ -238,10 +238,10 @@ npm run eval:quick -- mengshu-dedup
 
 | 工具 | 状态 | 工时 |
 |------|------|------|
-| eval/tools/annotator.js | ✅ 完成 | 1 天 |
-| eval/ANNOTATION_GUIDE.md | ✅ 完成 | 0.5 天 |
-| eval/EXPANSION_PLAN.md | ✅ 完成 | 0.5 天 |
-| eval/tools/annotation-workflow-example.sh | ✅ 完成 | 0.5 天 |
+| tests/eval/tools/annotator.js | ✅ 完成 | 1 天 |
+| tests/eval/ANNOTATION_GUIDE.md | ✅ 完成 | 0.5 天 |
+| tests/eval/EXPANSION_PLAN.md | ✅ 完成 | 0.5 天 |
+| tests/eval/tools/annotation-workflow-example.sh | ✅ 完成 | 0.5 天 |
 
 **总计**：2.5 天（已完成）
 
@@ -257,7 +257,7 @@ npm run eval:quick -- mengshu-dedup
    - [ ] 1 名仲裁人（最终决策权）
 
 2. **标注前培训**（0.5 天）：
-   - [ ] 阅读 `eval/ANNOTATION_GUIDE.md`
+   - [ ] 阅读 `tests/eval/ANNOTATION_GUIDE.md`
    - [ ] 试标 5 条样例
    - [ ] 讨论边界 case 判定准则
 
@@ -284,9 +284,9 @@ npm run eval:quick -- mengshu-dedup
 - 设计 §15.5：标注策略
 - 设计 §15.3：强制约束（确定性判定与 LLM 信号分离）
 - 设计 §15.4：误判样例与回归
-- `eval/EXPANSION_PLAN.md`：扩充计划
-- `eval/ANNOTATION_GUIDE.md`：标注规范
-- `eval/README.md`：评测基础设施
+- `tests/eval/EXPANSION_PLAN.md`：扩充计划
+- `tests/eval/ANNOTATION_GUIDE.md`：标注规范
+- `tests/eval/README.md`：评测基础设施
 
 ---
 

@@ -2,12 +2,15 @@
 
 本目录提供 mengshu 的评测黄金集、runner 与开源数据集 adapter。
 
-设计依据：[docs/07-test/memory-evaluation-plan.md](../docs/07-test/memory-evaluation-plan.md)。
+设计依据：
+
+- [docs/07-test/memory-evaluation-plan.md](../../docs/07-test/memory-evaluation-plan.md)
+- [docs/07-test/openclaw-history-eval-plan.md](../../docs/07-test/openclaw-history-eval-plan.md)
 
 ## 目录结构
 
 ```
-eval/
+tests/eval/
 ├── goldens/                  # 黄金集 jsonl 与 manifest
 │   ├── mengshu-v0.1.jsonl
 │   ├── mengshu-safety.jsonl
@@ -60,6 +63,7 @@ eval/
 |------|------|------|
 | `mengshu-v0.1` | 30 | profile / rules / experience workspace 复用，task_context / resource project 隔离，lookup-only 无 semanticType |
 | `mengshu-safety` | 40 | private 跨用户隔离、revoked / archived 不进 fast、5 类敏感属性拦截、prompt 注入转义、forbidden ids |
+| `mengshu-openclaw-history` | 规划中 | 基于 OpenClaw 真实历史数据，覆盖用户偏好、任务状态、Skill 噪声、slot 路由、标识符治理、记忆树关系和证据忠实度 |
 
 详见 `goldens/manifest.json`。
 
@@ -78,15 +82,15 @@ npm run eval:quick -- mengshu-safety
 npm run eval:quick -- all
 
 # 自定义输出目录
-npm run eval:quick -- mengshu-v0.1 --out eval/results/manual-run
+npm run eval:quick -- mengshu-v0.1 --out tests/eval/results/manual-run
 ```
 
-输出：`eval/results/<timestamp>/report.md` + `report.json`。
+输出：`tests/eval/results/<timestamp>/report.md` + `report.json`。
 
 ### 通过 vitest 跑（CI / 回归）
 
 ```bash
-npx vitest run eval/runners/quick-eval.test.ts
+npx vitest run tests/eval/runners/quick-eval.test.ts
 ```
 
 每条 case 都会变成一个 vitest test 条目，套件级断言会校验 release gate。
@@ -125,13 +129,13 @@ npx vitest run eval/runners/quick-eval.test.ts
      limit: 50,
    });
    ```
-3. 把转换结果写到 `eval/goldens/longmemeval-s.jsonl`，再用 `quick-eval` 跑。
+3. 把转换结果写到 `tests/eval/goldens/longmemeval-s.jsonl`，再用 `quick-eval` 跑。
 
 注意：
 
 - 默认 v0.1 release gate 不要求开源 benchmark。LongMemEval / LoCoMo 的接入是为
   v0.2+ 做准备。
-- `eval/fixtures/longmemeval-mini.json` 仅用于 adapter 单元测试，**不**是真实数据集。
+- `tests/eval/fixtures/longmemeval-mini.json` 仅用于 adapter 单元测试，**不**是真实数据集。
 
 ## 开发指引
 
@@ -139,8 +143,8 @@ npx vitest run eval/runners/quick-eval.test.ts
 
 1. 复制现有 jsonl 行为模板修改字段；
 2. 跑一遍 `npm run eval:quick -- <suite>` 确认通过；
-3. 重新计算 sha256：`shasum -a 256 eval/goldens/*.jsonl`；
-4. 更新 `eval/goldens/manifest.json` 的 size 与 sha256；
+3. 重新计算 sha256：`shasum -a 256 tests/eval/goldens/*.jsonl`；
+4. 更新 `tests/eval/goldens/manifest.json` 的 size 与 sha256；
 5. 提交。
 
 ### 新增指标
@@ -155,7 +159,7 @@ npx vitest run eval/runners/quick-eval.test.ts
 
 ### 标注工具
 
-位于 `eval/tools/annotator.js`，支持：
+位于 `tests/eval/tools/annotator.js`，支持：
 - 双人独立标注
 - 一致性计算（Cohen's Kappa）
 - 仲裁分歧样例
@@ -167,35 +171,35 @@ npx vitest run eval/runners/quick-eval.test.ts
 
 **Annotator 1**:
 ```bash
-node eval/tools/annotator.js annotate \
+node tests/eval/tools/annotator.js annotate \
   --suite mengshu-dedup \
   --annotator human_001
 ```
 
 **Annotator 2**:
 ```bash
-node eval/tools/annotator.js annotate \
+node tests/eval/tools/annotator.js annotate \
   --suite mengshu-dedup \
   --annotator human_002
 ```
 
 输出文件：
-- `eval/results/human_001_mengshu-dedup_<timestamp>.jsonl`
-- `eval/results/human_002_mengshu-dedup_<timestamp>.jsonl`
+- `tests/eval/results/human_001_mengshu-dedup_<timestamp>.jsonl`
+- `tests/eval/results/human_002_mengshu-dedup_<timestamp>.jsonl`
 
 #### 2. 计算一致性
 
 ```bash
-node eval/tools/annotator.js consistency \
+node tests/eval/tools/annotator.js consistency \
   --suite mengshu-dedup \
-  --file1 eval/results/human_001_mengshu-dedup_1718611200000.jsonl \
-  --file2 eval/results/human_002_mengshu-dedup_1718611200000.jsonl
+  --file1 tests/eval/results/human_001_mengshu-dedup_1718611200000.jsonl \
+  --file2 tests/eval/results/human_002_mengshu-dedup_1718611200000.jsonl
 ```
 
 输出：
 - Cohen's Kappa 值
 - 观察一致率 (P_o)
-- 分歧样例列表（自动导出到 `eval/results/conflicts_mengshu-dedup_<timestamp>.json`）
+- 分歧样例列表（自动导出到 `tests/eval/results/conflicts_mengshu-dedup_<timestamp>.json`）
 
 **门禁**：
 - Kappa >= 0.85：直接合并
@@ -205,8 +209,8 @@ node eval/tools/annotator.js consistency \
 #### 3. 仲裁（如有分歧）
 
 ```bash
-node eval/tools/annotator.js arbitrate \
-  --conflicts eval/results/conflicts_mengshu-dedup_1718611200000.json \
+node tests/eval/tools/annotator.js arbitrate \
+  --conflicts tests/eval/results/conflicts_mengshu-dedup_1718611200000.json \
   --arbitrator human_003
 ```
 
@@ -215,12 +219,12 @@ node eval/tools/annotator.js arbitrate \
 #### 4. 合并标注结果
 
 ```bash
-node eval/tools/annotator.js merge \
+node tests/eval/tools/annotator.js merge \
   --suite mengshu-dedup \
-  --file1 eval/results/human_001_mengshu-dedup_1718611200000.jsonl \
-  --file2 eval/results/human_002_mengshu-dedup_1718611200000.jsonl \
-  --arbitrated eval/results/arbitrated_1718611200000.json \
-  --output eval/goldens/mengshu-dedup-annotated.jsonl
+  --file1 tests/eval/results/human_001_mengshu-dedup_1718611200000.jsonl \
+  --file2 tests/eval/results/human_002_mengshu-dedup_1718611200000.jsonl \
+  --arbitrated tests/eval/results/arbitrated_1718611200000.json \
+  --output tests/eval/goldens/mengshu-dedup-annotated.jsonl
 ```
 
 生成带标注元数据的最终 jsonl 文件。
@@ -229,14 +233,14 @@ node eval/tools/annotator.js merge \
 
 ```bash
 # 计算新 sha256
-shasum -a 256 eval/goldens/mengshu-dedup-annotated.jsonl
+shasum -a 256 tests/eval/goldens/mengshu-dedup-annotated.jsonl
 
-# 手动更新 eval/goldens/manifest.json
+# 手动更新 tests/eval/goldens/manifest.json
 ```
 
 ### 标注规范
 
-详见 `eval/ANNOTATION_GUIDE.md`，包括：
+详见 `tests/eval/ANNOTATION_GUIDE.md`，包括：
 - extraction 三要素（type/targetScope/evidence）
 - dedup 关系枚举（duplicate/update/conflict/related/distinct）
 - 边界样例判定准则
@@ -244,7 +248,7 @@ shasum -a 256 eval/goldens/mengshu-dedup-annotated.jsonl
 
 ### 扩充计划
 
-详见 `eval/EXPANSION_PLAN.md`，包括：
+详见 `tests/eval/EXPANSION_PLAN.md`，包括：
 - P0-c：提取 100 条 + 去重 80 条（双人标注）
 - P1：摘要 50 条 + 冲突 30 条
 - P2：主动学习采样（每周 25 条）

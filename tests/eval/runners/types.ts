@@ -11,7 +11,7 @@
  *   - quick-eval 把每条 GoldenCase 灌进 in-memory MemoryService 并构建 Slot 上下文
  *   - judge 对照 expected.requiredMemoryIds / forbiddenMemoryIds / requiredSlots
  *     给出 verdict 与 metric breakdown
- *   - 汇总 metrics 输出 EvalReport（写到 eval/results/<timestamp>/report.md）
+ *   - 汇总 metrics 输出 EvalReport（写到 tests/eval/results/<timestamp>/report.md）
  *
  * 关键边界：
  *   - schema 必须与 docs/07-test/memory-evaluation-plan.md §5.2 一致；
@@ -26,7 +26,7 @@ import type {
   MemoryScopeInput,
   MemorySemanticType,
   MemoryVisibility,
-} from "../../core/types.js";
+} from "../../../core/types.js";
 
 /** v0.1 jsonl 黄金集中的 seed 记忆条目。 */
 export interface SeedMemorySpec {

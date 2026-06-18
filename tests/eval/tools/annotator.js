@@ -11,18 +11,18 @@
  *
  * 使用方式：
  *   # 标注模式
- *   node eval/tools/annotator.js annotate --suite mengshu-dedup --annotator human_001
+ *   node tests/eval/tools/annotator.js annotate --suite mengshu-dedup --annotator human_001
  *
  *   # 一致性计算
- *   node eval/tools/annotator.js consistency --suite mengshu-dedup \
+ *   node tests/eval/tools/annotator.js consistency --suite mengshu-dedup \
  *     --file1 results/human_001.jsonl --file2 results/human_002.jsonl
  *
  *   # 仲裁模式
- *   node eval/tools/annotator.js arbitrate --suite mengshu-dedup \
+ *   node tests/eval/tools/annotator.js arbitrate --suite mengshu-dedup \
  *     --conflicts results/conflicts.json --arbitrator human_003
  *
  *   # 合并模式
- *   node eval/tools/annotator.js merge --suite mengshu-dedup \
+ *   node tests/eval/tools/annotator.js merge --suite mengshu-dedup \
  *     --file1 results/human_001.jsonl --file2 results/human_002.jsonl \
  *     --output goldens/mengshu-dedup-annotated.jsonl
  */
@@ -441,7 +441,7 @@ function printHelp() {
 Golden Set 标注工具
 
 用法:
-  node eval/tools/annotator.js <command> [options]
+  node tests/eval/tools/annotator.js <command> [options]
 
 命令:
   annotate       标注模式（单人标注）
@@ -451,20 +451,20 @@ Golden Set 标注工具
 
 示例:
   # 标注
-  node eval/tools/annotator.js annotate --suite mengshu-dedup --annotator human_001
+  node tests/eval/tools/annotator.js annotate --suite mengshu-dedup --annotator human_001
 
   # 一致性
-  node eval/tools/annotator.js consistency --suite mengshu-dedup \\
+  node tests/eval/tools/annotator.js consistency --suite mengshu-dedup \\
     --file1 results/human_001_mengshu-dedup.jsonl \\
     --file2 results/human_002_mengshu-dedup.jsonl
 
   # 仲裁
-  node eval/tools/annotator.js arbitrate \\
+  node tests/eval/tools/annotator.js arbitrate \\
     --conflicts results/conflicts_mengshu-dedup.json \\
     --arbitrator human_003
 
   # 合并
-  node eval/tools/annotator.js merge --suite mengshu-dedup \\
+  node tests/eval/tools/annotator.js merge --suite mengshu-dedup \\
     --file1 results/human_001_mengshu-dedup.jsonl \\
     --file2 results/human_002_mengshu-dedup.jsonl \\
     --arbitrated results/arbitrated.json \\

@@ -1,8 +1,8 @@
 /**
- * eval/runners/quick-eval — 黄金集快速评测 runner。
+ * tests/eval/runners/quick-eval — 黄金集快速评测 runner。
  *
  * 本文件做什么：
- *   1) 从 eval/goldens/<suite>.jsonl 加载 GoldenCase。
+ *   1) 从 tests/eval/goldens/<suite>.jsonl 加载 GoldenCase。
  *   2) 对每条 case：
  *      - normalize 请求 scope；
  *      - 把 seedMemories 转成 MemoryRecord，过敏感过滤、记录 sensitiveBlockedIds；
@@ -10,10 +10,10 @@
  *      - 调 SlotContextBuilder 生成 5 槽位上下文；
  *      - 收集 injectedMemoryIds + filledSlots；
  *      - 调 defaultJudge 判定，产出 CaseResult。
- *   3) 汇总 SuiteSummary，写 markdown 报告到 eval/results/<timestamp>/report.md。
+ *   3) 汇总 SuiteSummary，写 markdown 报告到 tests/eval/results/<timestamp>/report.md。
  *
  * 核心流程（CLI）：
- *   tsx eval/runners/quick-eval.ts <suite> [--out <dir>]
+ *   tsx tests/eval/runners/quick-eval.ts <suite> [--out <dir>]
  *   suite: 黄金集名（默认 mengshu-v0.1）
  *
  * 关键边界：
@@ -27,19 +27,19 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { normalizeScope } from "../../core/scope.js";
-import { SlotContextBuilder } from "../../core/slot-context-builder.js";
-import { SlotSnapshotCache } from "../../core/slot-snapshot.js";
+import { normalizeScope } from "../../../core/scope.js";
+import { SlotContextBuilder } from "../../../core/slot-context-builder.js";
+import { SlotSnapshotCache } from "../../../core/slot-snapshot.js";
 import {
   applyScopeReusePolicy,
   applyVisibilityFilter,
-} from "../../core/scope-policy.js";
-import { isSensitive } from "../../lifecycle/sensitive-filter.js";
+} from "../../../core/scope-policy.js";
+import { isSensitive } from "../../../lifecycle/sensitive-filter.js";
 import type {
   MemoryRecord,
   MemoryScope,
   MemorySemanticType,
-} from "../../core/types.js";
+} from "../../../core/types.js";
 
 import { loadGoldenJsonl } from "./load-jsonl.js";
 import { defaultJudge, summarizeSuite } from "./judge.js";
