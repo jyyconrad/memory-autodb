@@ -73,6 +73,7 @@ ms scan ./docs                 # 扫描目录
 ms project ingest-history --from codex --dry-run  # 预览 agent history 导入
 ms cleanup                     # 清理过期数据
 ms migrate-home               # 迁移旧配置
+ms migrate-openclaw-plugin-id # 预览 OpenClaw 插件 id 迁移
 
 # 服务
 ms serve                       # 启动 REST server + Web Console
@@ -86,7 +87,8 @@ ms mcp                        # 启动 MCP Server
 ### OpenClaw 插件
 
 ```bash
-openclaw plugin add memory-autodb
+openclaw plugin add ./plugins/openclaw
+ms migrate-openclaw-plugin-id --execute  # 旧 memory-autodb/mengshu 配置迁到 mengshu-openclaw
 ```
 
 ### MCP Server
@@ -118,7 +120,14 @@ const memory = new MemoryService({
   embedding: {
     model: 'text-embedding-3-small'
   },
-  dbType: 'lancedb'
+  dbType: 'postgres',
+  postgres: {
+    host: process.env.PG_HOST,
+    port: 5432,
+    database: process.env.PG_DATABASE,
+    user: process.env.PG_USER,
+    password: process.env.PG_PASSWORD
+  }
 });
 
 await memory.initialize();
@@ -148,8 +157,15 @@ mengshu 使用三层配置：
     "apiKey": "${OPENAI_API_KEY}",
     "extractionModel": "gpt-4o-mini"
   },
-  "dbType": "lancedb",
-  "dbPath": "~/.mengshu/memory/lancedb"
+  "dbType": "postgres",
+  "postgres": {
+    "host": "${PG_HOST}",
+    "port": 5432,
+    "database": "${PG_DATABASE}",
+    "user": "${PG_USER}",
+    "password": "${PG_PASSWORD}",
+    "ssl": false
+  }
 }
 ```
 

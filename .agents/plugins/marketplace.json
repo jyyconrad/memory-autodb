@@ -1,0 +1,20 @@
+{
+  "name": "mengshu-local",
+  "interface": {
+    "displayName": "Mengshu Local"
+  },
+  "plugins": [
+    {
+      "name": "mengshu-memory",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
