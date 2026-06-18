@@ -8,10 +8,10 @@
  */
 
 import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
-import { registerRecallCliCommands } from "./cli-recall.js";
-import type { CommanderLike } from "./cli.js";
-import type { MemoryService } from "../../core/service-types.js";
-import type { MemoryScope, MemoryRecord, RecallResult } from "../../core/types.js";
+import { registerRecallCliCommands } from "./recall.js";
+import type { CommanderLike } from "./index.js";
+import type { MemoryService } from "../../../../core/service-types.js";
+import type { MemoryScope, MemoryRecord, RecallResult } from "../../../../core/types.js";
 
 interface FakeCommand {
   name: string;
@@ -255,5 +255,27 @@ describe("registerRecallCliCommands", () => {
 
     // 应该能显示 importance 明细（因为 confidence 可作为 salience）
     expect(out).toMatch(/importance 明细|salience|authority/i);
+  });
+
+  test("--explain 遇到历史非数值评分字段时不崩溃", async () => {
+    const { commander, commands } = makeFakeCommander();
+    registerRecallCliCommands(commander, {
+      service: makeFakeService([
+        {
+          record: makeRecord("legacy", {
+            text: "legacy score shape",
+            hotness: { queryHits30d: 1 } as never,
+          }),
+          score: 0.8,
+        },
+      ]),
+      defaultScope: scope,
+    });
+    const recall = commands.find((c) => c.name.startsWith("recall"))!;
+
+    await expect(
+      recall.action!("q", { limit: "10", minScore: "0.3", explain: true }),
+    ).resolves.not.toThrow();
+    expect(loggedOutput()).toContain("legacy score shape");
   });
 });

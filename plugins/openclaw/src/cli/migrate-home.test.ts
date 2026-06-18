@@ -6,7 +6,11 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { migrateHome } from "./cli-migrate-home.js";
+import {
+  migrateHome,
+  migrateOpenClawPluginId,
+  planOpenClawPluginIdMigration,
+} from "./migrate-home.js";
 
 describe("cli-migrate-home", () => {
   let testDir: string;
@@ -193,5 +197,91 @@ describe("cli-migrate-home", () => {
     expect(existsSync(join(newHome, ".env"))).toBe(true);
     // 不存在的文件不应阻止整体迁移
     expect(existsSync(newHome)).toBe(true);
+  });
+
+  it("迁移 OpenClaw 插件 id 时复制旧 entry 配置并默认删除旧 id", () => {
+    const { nextConfig, plan } = planOpenClawPluginIdMigration({
+      slots: { memory: "memory-autodb" },
+      entries: {
+        "memory-autodb": {
+          enabled: true,
+          config: { dbPath: "/tmp/db" },
+        },
+      },
+    });
+
+    const entries = nextConfig.entries as Record<string, Record<string, unknown>>;
+    const slots = nextConfig.slots as Record<string, unknown>;
+    expect(slots.memory).toBe("mengshu-openclaw");
+    expect(entries["mengshu-openclaw"].enabled).toBe(true);
+    expect(entries["mengshu-openclaw"].config).toEqual({ dbPath: "/tmp/db" });
+    expect(entries["memory-autodb"]).toBeUndefined();
+    expect(plan.movedEntryFrom).toBe("memory-autodb");
+    expect(plan.changed).toBe(true);
+  });
+
+  it("可选择保留旧 entry 并禁用", () => {
+    const { nextConfig } = planOpenClawPluginIdMigration({
+      slots: { memory: "memory-autodb" },
+      entries: {
+        "memory-autodb": {
+          enabled: true,
+          config: { dbPath: "/tmp/db" },
+        },
+      },
+    }, { keepLegacyEntry: true });
+
+    const entries = nextConfig.entries as Record<string, Record<string, unknown>>;
+    expect(entries["memory-autodb"].enabled).toBe(false);
+    expect(entries["memory-autodb"]).not.toHaveProperty("migratedTo");
+  });
+
+  it("迁移 OpenClaw 主配置的 plugins 嵌套结构", () => {
+    const { nextConfig } = planOpenClawPluginIdMigration({
+      plugins: {
+        slots: { memory: "memory-autodb" },
+        entries: {
+          "memory-autodb": {
+            enabled: true,
+            config: { dbType: "lancedb" },
+          },
+        },
+      },
+    });
+
+    const plugins = nextConfig.plugins as Record<string, unknown>;
+    const entries = plugins.entries as Record<string, Record<string, unknown>>;
+    const slots = plugins.slots as Record<string, unknown>;
+    expect(slots.memory).toBe("mengshu-openclaw");
+    expect(entries["mengshu-openclaw"].config).toEqual({ dbType: "lancedb" });
+    expect(entries["memory-autodb"]).toBeUndefined();
+  });
+
+  it("migrateOpenClawPluginId execute 更新指定 plugins.json 并创建备份", async () => {
+    const confDir = join(legacyHome, "conf");
+    mkdirSync(confDir, { recursive: true });
+    const configPath = join(confDir, "plugins.json");
+    writeFileSync(configPath, JSON.stringify({
+      slots: { memory: "mengshu" },
+      entries: {
+        mengshu: {
+          enabled: true,
+          config: { dbPath: "/tmp/legacy" },
+        },
+      },
+    }));
+
+    const plans = await migrateOpenClawPluginId({
+      dryRun: false,
+      configPath,
+    });
+
+    const next = JSON.parse(require("fs").readFileSync(configPath, "utf8"));
+    expect(next.slots.memory).toBe("mengshu-openclaw");
+    expect(next.entries["mengshu-openclaw"].config.dbPath).toBe("/tmp/legacy");
+    expect(next.entries.mengshu).toBeUndefined();
+    expect(plans).toHaveLength(1);
+    const backups = readdirSync(confDir).filter((name) => name.startsWith("plugins.json.bak-"));
+    expect(backups.length).toBe(1);
   });
 });

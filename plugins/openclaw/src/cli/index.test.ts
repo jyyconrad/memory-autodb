@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { registerMemoryServerCliCommands } from "./cli.js";
+import { registerMemoryServerCliCommands } from "./index.js";
 
 class FakeCommand {
   subcommands: FakeCommand[] = [];

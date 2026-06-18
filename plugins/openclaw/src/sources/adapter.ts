@@ -5,12 +5,12 @@ import type {
   SourceAdapterContext,
   SourceFileParseResult,
   DiscoverResult,
-} from "../../../ingest/agent-history/types.js";
+} from "../../../../ingest/agent-history/types.js";
 import {
   discoverJsonlSources,
   parseJsonlFile,
   type JsonlSourceOptions,
-} from "../jsonl-parser.js";
+} from "../../../../packages/core/src/ingest/sources/jsonl-parser.js";
 
 const OPTIONS: JsonlSourceOptions = {
   provider: "openclaw",

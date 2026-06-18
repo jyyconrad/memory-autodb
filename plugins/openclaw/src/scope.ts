@@ -5,9 +5,9 @@
  * app 固定为 `openclaw`，namespace 来自表名，其余维度缺失时交给 core scope 默认值。
  */
 
-import type { TableName } from "../../db/types.js";
-import { normalizeScope } from "../../core/scope.js";
-import type { MemoryScope } from "../../core/types.js";
+import type { TableName } from "../../../db/types.js";
+import { normalizeScope } from "../../../core/scope.js";
+import type { MemoryScope } from "../../../core/types.js";
 
 export interface OpenClawScopeInput extends Record<string, unknown> {
   userId?: unknown;

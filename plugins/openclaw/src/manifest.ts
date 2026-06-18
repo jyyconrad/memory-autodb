@@ -25,10 +25,10 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { normalizeScope } from "../../core/scope.js";
-import { DEFAULT_SLOT_REUSE_POLICY, type ReuseLevel } from "../../core/scope-policy.js";
-import type { MemoryScope, MemoryScopeInput, MemorySemanticType, MemoryVisibility } from "../../core/types.js";
-import { resolveProjectManifestPath, type HomePathOptions } from "../../core/paths.js";
+import { normalizeScope } from "../../../core/scope.js";
+import { DEFAULT_SLOT_REUSE_POLICY, type ReuseLevel } from "../../../core/scope-policy.js";
+import type { MemoryScope, MemoryScopeInput, MemorySemanticType, MemoryVisibility } from "../../../core/types.js";
+import { resolveProjectManifestPath, type HomePathOptions } from "../../../core/paths.js";
 
 /** manifest 指针文件名，放在 project 目录根部。 */
 export const MANIFEST_FILENAME = ".mengshu.json";

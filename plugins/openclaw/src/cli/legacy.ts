@@ -1,14 +1,14 @@
-import type { Embeddings } from "../../processing/embeddings.js";
-import type { DatabaseProvider, TableName } from "../../db/types.js";
-import type { MemoryConfig } from "../../config.js";
-import type { IngestionPipeline } from "../../ingest/pipeline.js";
-import type { RoutingEngine } from "../../routing/rules.js";
-import type { CommanderLike } from "./cli.js";
+import type { Embeddings } from "../../../../processing/embeddings.js";
+import type { DatabaseProvider, TableName } from "../../../../db/types.js";
+import type { MemoryConfig } from "../../../../config.js";
+import type { IngestionPipeline } from "../../../../ingest/pipeline.js";
+import type { RoutingEngine } from "../../../../packages/core/src/routing/rules.js";
+import type { CommanderLike } from "./index.js";
 import {
   handleMemoryScanDirectory,
   resolveCategoryName,
   resolveTableName,
-} from "./tools.js";
+} from "../tools.js";
 
 export interface RegisterLegacyCliOptions {
   config: MemoryConfig;
@@ -78,7 +78,11 @@ export function registerLegacyCliCommands(
         }
       }
 
-      if (config.supabase) {
+      if (config.dbType === "postgres" && config.postgres) {
+        console.log(
+          `- Postgres: ${config.postgres.user}@${config.postgres.host}:${config.postgres.port}/${config.postgres.database}`,
+        );
+      } else if (config.supabase) {
         console.log(`- Supabase URL: ${config.supabase.url}`);
       } else {
         console.log(`- LanceDB path: ${options.resolvedDbPath}`);

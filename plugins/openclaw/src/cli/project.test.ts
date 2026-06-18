@@ -22,9 +22,9 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { mkdtempSync, rmSync, existsSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { registerProjectCliCommands } from "./cli-project.js";
-import { MANIFEST_FILENAME, readManifest, createManifest, writeManifest, readProjectManifest } from "./manifest.js";
-import { readRegistry } from "../../core/registry.js";
+import { registerProjectCliCommands } from "./project.js";
+import { MANIFEST_FILENAME, readManifest, createManifest, writeManifest, readProjectManifest } from "../manifest.js";
+import { readRegistry } from "../../../../core/registry.js";
 
 /** 鸭子类型 fake：支持 command 字符串含位置参数（init [dir] / lookup <query>）。 */
 class FakeCommand {

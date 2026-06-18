@@ -17,16 +17,17 @@
 
 import { accessSync, constants } from "node:fs";
 import { dirname, resolve } from "node:path";
-import type { CommanderLike } from "./cli.js";
-import type { MemoryService } from "../../core/service-types.js";
-import type { MemoryScope } from "../../core/types.js";
-import { vectorDimsForModel } from "../../config.js";
+import type { CommanderLike } from "./index.js";
+import type { MemoryService } from "../../../../core/service-types.js";
+import type { MemoryScope } from "../../../../core/types.js";
+import { expandHome } from "../../../../core/paths.js";
+import { vectorDimsForModel } from "../../../../config.js";
 import { buildAgentService } from "./agent-service-helper.js";
 import {
   MANIFEST_FILENAME,
   manifestToScope,
   readManifest,
-} from "./manifest.js";
+} from "../manifest.js";
 
 /** 单项检查结果。status 分四级：ok / info / warning / fatal。 */
 export interface CheckResult {
@@ -123,7 +124,7 @@ export function checkDisk(dbPath: string | undefined): CheckResult {
   if (!dbPath || dbPath.trim().length === 0) {
     return { name, status: "warning", message: "未配置 dbPath，跳过磁盘检查" };
   }
-  const target = resolve(dbPath);
+  const target = resolve(expandHome(dbPath));
   // dbPath 本身可能尚未创建，回退检查其父目录可写性。
   const candidates = [target, dirname(target)];
   for (const candidate of candidates) {
@@ -159,6 +160,22 @@ function configEmbeddingModel(config: unknown): string | undefined {
 
 function configDbPath(config: unknown): string | undefined {
   return optString(asRecord(config).dbPath);
+}
+
+function configDbType(config: unknown): string {
+  const dbType = optString(asRecord(config).dbType);
+  return dbType ?? "lancedb";
+}
+
+function checkStorage(config: unknown): CheckResult {
+  const dbType = configDbType(config);
+  if (dbType === "postgres") {
+    return { name: "storage", status: "info", message: "PostgreSQL 后端，跳过本地 dbPath 磁盘检查" };
+  }
+  if (dbType === "supabase") {
+    return { name: "storage", status: "info", message: "Supabase 后端，跳过本地 dbPath 磁盘检查" };
+  }
+  return checkDisk(configDbPath(config));
 }
 
 function serverHost(config: unknown): string {
@@ -286,7 +303,7 @@ async function runDoctor(dir: string, deps: DoctorCliDeps): Promise<void> {
     await checkDb(deps.service),
     await checkEmbedding(deps.embeddings),
     checkModel(configEmbeddingModel(config)),
-    checkDisk(configDbPath(config)),
+    checkStorage(config),
     checkManifest(dir),
   ];
 

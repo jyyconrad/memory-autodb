@@ -1,9 +1,13 @@
 import { describe, expect, test, vi } from "vitest";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
-import { registerOpenClawAdapter } from "./index.js";
-import { createMengshuRuntime } from "../../runtime.js";
-import type { MemoryConfig } from "../../config.js";
-import type { DatabaseProvider, MemoryEntry, MemoryQueryOptions } from "../../db/types.js";
+import {
+  OPENCLAW_MEMORY_PLUGIN_ID,
+  registerOpenClawAdapter,
+  resolveOpenClawDbPath,
+} from "./register.js";
+import { createMengshuRuntime } from "../../../runtime.js";
+import type { MemoryConfig } from "../../../config.js";
+import type { DatabaseProvider, MemoryEntry, MemoryQueryOptions } from "../../../db/types.js";
 
 class FakeDb implements DatabaseProvider {
   initialize = vi.fn(async () => {});
@@ -34,6 +38,9 @@ function makeApi() {
   const clis: unknown[] = [];
   const services: Array<{ id: string; start(): Promise<void>; stop(): Promise<void> }> = [];
   const hooks: Array<{ name: string; handler: unknown }> = [];
+  const memoryPromptSections: unknown[] = [];
+  const memoryFlushPlans: unknown[] = [];
+  const memoryRuntimes: unknown[] = [];
   const api = {
     pluginConfig: config,
     logger: { info: vi.fn(), warn: vi.fn() },
@@ -42,11 +49,37 @@ function makeApi() {
     registerCli: (registrar: unknown) => clis.push(registrar),
     registerService: (service: { id: string; start(): Promise<void>; stop(): Promise<void> }) => services.push(service),
     on: (name: string, handler: unknown) => hooks.push({ name, handler }),
+    registerMemoryPromptSection: (builder: unknown) => memoryPromptSections.push(builder),
+    registerMemoryFlushPlan: (resolver: unknown) => memoryFlushPlans.push(resolver),
+    registerMemoryRuntime: (runtime: unknown) => memoryRuntimes.push(runtime),
   };
-  return { api: api as unknown as OpenClawPluginApi, tools, clis, services, hooks };
+  return {
+    api: api as unknown as OpenClawPluginApi,
+    tools,
+    clis,
+    services,
+    hooks,
+    memoryPromptSections,
+    memoryFlushPlans,
+    memoryRuntimes,
+  };
 }
 
 describe("registerOpenClawAdapter", () => {
+  test("expands home dbPath instead of resolving it relative to project", () => {
+    const resolved = resolveOpenClawDbPath("~/.mengshu/memory/lancedb", (input) => `/project/${input}`);
+
+    expect(resolved).toMatch(/\/\.mengshu\/memory\/lancedb$/);
+    expect(resolved).not.toContain("/project/");
+    expect(resolved).not.toContain("/~/");
+  });
+
+  test("keeps relative dbPath resolved by OpenClaw project resolver", () => {
+    const resolved = resolveOpenClawDbPath(".mengshu/memory/lancedb", (input) => `/project/${input}`);
+
+    expect(resolved).toBe("/project/.mengshu/memory/lancedb");
+  });
+
   test("registers tools, CLI, hooks and service through runtime", async () => {
     const db = new FakeDb();
     const runtime = createMengshuRuntime({
@@ -55,7 +88,7 @@ describe("registerOpenClawAdapter", () => {
       appId: "openclaw",
       db,
     });
-    const { api, tools, clis, services, hooks } = makeApi();
+    const { api, tools, clis, services, hooks, memoryPromptSections, memoryFlushPlans, memoryRuntimes } = makeApi();
 
     registerOpenClawAdapter(api, config, { runtime });
 
@@ -70,6 +103,10 @@ describe("registerOpenClawAdapter", () => {
     expect(clis).toHaveLength(1);
     expect(hooks.map((hook) => hook.name).sort()).toEqual(["agent_end", "before_agent_start"]);
     expect(services).toHaveLength(1);
+    expect(services[0].id).toBe(OPENCLAW_MEMORY_PLUGIN_ID);
+    expect(memoryPromptSections).toHaveLength(1);
+    expect(memoryFlushPlans).toHaveLength(1);
+    expect(memoryRuntimes).toHaveLength(1);
     await services[0].start();
     await services[0].stop();
     expect(db.initialize).toHaveBeenCalledTimes(1);

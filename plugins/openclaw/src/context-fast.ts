@@ -4,13 +4,13 @@
  * 封装 AgentFastPathService 为 OpenClaw 工具，提供快速 5 槽位上下文。
  */
 
-import type { MemoryService } from "../../core/service-types.js";
-import type { MemoryRecord, MemoryScope, MemoryScopeInput } from "../../core/types.js";
+import type { MemoryService } from "../../../core/service-types.js";
+import type { MemoryRecord, MemoryScope, MemoryScopeInput } from "../../../core/types.js";
 import {
   AgentFastPathService,
   type AgentTaskContextRequest,
-} from "../../api/agent-fast-path.js";
-import { normalizeScope } from "../../core/scope.js";
+} from "../../../packages/api/src/agent-fast-path/index.js";
+import { normalizeScope } from "../../../core/scope.js";
 import { buildOpenClawScope } from "./scope.js";
 
 export interface MemoryContextFastParams {

@@ -5,10 +5,10 @@
  */
 
 import { describe, expect, test } from "vitest";
-import { registerForgetCliCommands } from "./cli-forget.js";
-import { InMemoryMemoryStore } from "../../storage/repositories/in-memory.js";
-import type { MemoryRecord } from "../../core/types.js";
-import { computeContentHash } from "../../processing/hash-utils.js";
+import { registerForgetCliCommands } from "./forget.js";
+import { InMemoryMemoryStore } from "../../../../storage/repositories/in-memory.js";
+import type { MemoryRecord } from "../../../../core/types.js";
+import { computeContentHash } from "../../../../processing/hash-utils.js";
 
 class FakeCommand {
   subcommands: FakeCommand[] = [];

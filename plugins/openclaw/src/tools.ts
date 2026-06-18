@@ -6,14 +6,14 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { MemoryCategory } from "../../config.js";
-import { MEMORY_CATEGORIES } from "../../config.js";
-import type { DataType, TableName } from "../../db/types.js";
-import type { MemoryService } from "../../core/service-types.js";
-import type { MemoryRecord, RecallHit } from "../../core/types.js";
-import type { IngestionPipeline } from "../../ingest/pipeline.js";
-import { ingestMarkdownDirectory } from "../../ingest/adapters/file-system.js";
-import { computeContentHash } from "../../processing/hash-utils.js";
+import type { MemoryCategory } from "../../../config.js";
+import { MEMORY_CATEGORIES } from "../../../config.js";
+import type { DataType, TableName } from "../../../db/types.js";
+import type { MemoryService } from "../../../core/service-types.js";
+import type { MemoryRecord, RecallHit } from "../../../core/types.js";
+import type { IngestionPipeline } from "../../../ingest/pipeline.js";
+import { ingestMarkdownDirectory } from "../../../ingest/adapters/file-system.js";
+import { computeContentHash } from "../../../processing/hash-utils.js";
 import { buildOpenClawScope } from "./scope.js";
 
 const STORAGE_CATEGORY_MAP: Record<string, "memories" | "knowledge"> = {

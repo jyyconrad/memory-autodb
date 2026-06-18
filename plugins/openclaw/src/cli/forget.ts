@@ -10,11 +10,11 @@
  *   - 调用方负责注入 MemoryRepository 和可选的 Embeddings（纠错文本需要）。
  */
 
-import type { MemoryRepository } from "../../core/service-types.js";
-import type { MemoryScope } from "../../core/types.js";
-import type { CommanderLike } from "./cli.js";
-import { forgetCommand } from "../../lifecycle/forget-handler.js";
-import type { ForgetAction, CorrectionInput } from "../../lifecycle/forget-types.js";
+import type { MemoryRepository } from "../../../../core/service-types.js";
+import type { MemoryScope } from "../../../../core/types.js";
+import type { CommanderLike } from "./index.js";
+import { forgetCommand } from "../../../../lifecycle/forget-handler.js";
+import type { ForgetAction, CorrectionInput } from "../../../../lifecycle/forget-types.js";
 
 export interface ForgetCliDeps {
   repository: MemoryRepository;

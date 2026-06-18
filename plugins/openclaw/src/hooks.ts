@@ -9,15 +9,15 @@ import { randomUUID } from "node:crypto";
 import {
   DEFAULT_CAPTURE_MAX_CHARS,
   type MemoryCategory,
-} from "../../config.js";
-import type { DataType } from "../../db/types.js";
-import type { MemoryService } from "../../core/service-types.js";
-import type { MemoryRecord } from "../../core/types.js";
-import { computeContentHash } from "../../processing/hash-utils.js";
+} from "../../../config.js";
+import type { DataType } from "../../../db/types.js";
+import type { MemoryService } from "../../../core/service-types.js";
+import type { MemoryRecord } from "../../../core/types.js";
+import { computeContentHash } from "../../../processing/hash-utils.js";
 import {
   formatRelevantMemoriesContext,
   looksLikePromptInjection,
-} from "../../retrieval/prompt-safety.js";
+} from "../../../retrieval/prompt-safety.js";
 import { buildOpenClawScope } from "./scope.js";
 
 export interface HookLogger {
@@ -51,7 +51,7 @@ export interface AutoCaptureContext {
   idFactory?: () => string;
   now?: () => number;
   logger?: HookLogger;
-  enqueueGraphExtraction?: (chunkId: string, text: string, scope: import("../../core/types.js").MemoryScope) => Promise<void>;
+  enqueueGraphExtraction?: (chunkId: string, text: string, scope: import("../../../core/types.js").MemoryScope) => Promise<void>;
 }
 
 const MEMORY_TRIGGERS = [

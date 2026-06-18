@@ -5,11 +5,11 @@
  * 仍保留在 index.ts，避免一次性迁移全部 CLI。
  */
 
-import type { MemoryConfig } from "../../config.js";
-import type { MemoryService } from "../../core/service-types.js";
-import type { TableStats } from "../../db/types.js";
-import { startMemoryServer, type StartMemoryServerOptions } from "../../server/daemon.js";
-import { planV4Migration } from "../../migration/v4.js";
+import type { MemoryConfig } from "../../../../config.js";
+import type { MemoryService } from "../../../../core/service-types.js";
+import type { TableStats } from "../../../../db/types.js";
+import { startMemoryServer, type StartMemoryServerOptions } from "../../../../server/daemon.js";
+import { planV4Migration } from "../../../../migration/v4.js";
 
 export interface CommanderLike {
   command(name: string): CommanderLike;

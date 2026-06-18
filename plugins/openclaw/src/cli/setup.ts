@@ -19,7 +19,7 @@
 
 import fs from "node:fs";
 import { createInterface, type Interface as ReadlineInterface } from "node:readline";
-import { resolveHomeDir, resolveConfigPath, resolveEnvPath } from "../../core/paths.js";
+import { resolveHomeDir, resolveConfigPath, resolveEnvPath, type HomePathOptions } from "../../../../core/paths.js";
 
 // ─── Provider 预设 ──────────────────────────────────────────────────────────
 
@@ -73,10 +73,12 @@ const LLM_PROVIDERS: ReadonlyArray<ProviderPreset> = [
 ];
 
 const DB_TYPES = [
-  { name: "LanceDB (本地，推荐)", value: "lancedb" },
-  { name: "PostgreSQL (pgvector)", value: "postgres" },
+  { name: "PostgreSQL (pgvector，推荐共享后端)", value: "postgres" },
+  { name: "LanceDB (本地单机)", value: "lancedb" },
   { name: "Supabase (云端)", value: "supabase" },
 ] as const;
+
+const ENV_NAME_RE = /^[A-Z_][A-Z0-9_]*$/;
 
 // ─── 交互工具函数 ────────────────────────────────────────────────────────────
 
@@ -87,14 +89,47 @@ interface SetupResult {
   envPath: string;
 }
 
-function createReadline(): ReadlineInterface {
+interface SetupReadline {
+  question(query: string, callback: (answer: string) => void): void;
+  close(): void;
+}
+
+interface InteractiveSetupOptions {
+  createReadline?: () => SetupReadline;
+  homePathOptions?: HomePathOptions;
+}
+
+type DatabaseSetupResult =
+  | { dbType: "lancedb"; dbPath: string }
+  | {
+      dbType: "postgres";
+      postgres: {
+        host: string;
+        port: number;
+        database: string;
+        user: string;
+        password: string;
+        passwordEnvKey: string;
+        ssl: boolean;
+      };
+    }
+  | {
+      dbType: "supabase";
+      supabase: {
+        url: string;
+        serviceKey: string;
+        serviceKeyEnvKey: string;
+      };
+    };
+
+function createReadline(): SetupReadline {
   return createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 }
 
-function ask(rl: ReadlineInterface, question: string): Promise<string> {
+function ask(rl: SetupReadline, question: string): Promise<string> {
   return new Promise((resolve) => {
     rl.question(question, (answer) => {
       resolve(answer.trim());
@@ -102,12 +137,12 @@ function ask(rl: ReadlineInterface, question: string): Promise<string> {
   });
 }
 
-async function askWithDefault(rl: ReadlineInterface, question: string, defaultValue: string): Promise<string> {
+async function askWithDefault(rl: SetupReadline, question: string, defaultValue: string): Promise<string> {
   const answer = await ask(rl, `${question} [${defaultValue}]: `);
   return answer || defaultValue;
 }
 
-async function askChoice(rl: ReadlineInterface, question: string, options: ReadonlyArray<{ name: string }>): Promise<number> {
+async function askChoice(rl: SetupReadline, question: string, options: ReadonlyArray<{ name: string }>): Promise<number> {
   console.log(`\n${question}`);
   for (let i = 0; i < options.length; i++) {
     console.log(`  ${i + 1}. ${options[i].name}`);
@@ -120,11 +155,36 @@ async function askChoice(rl: ReadlineInterface, question: string, options: Reado
   return 0;
 }
 
-async function askYesNo(rl: ReadlineInterface, question: string, defaultYes: boolean = true): Promise<boolean> {
+async function askYesNo(rl: SetupReadline, question: string, defaultYes: boolean = true): Promise<boolean> {
   const hint = defaultYes ? "[Y/n]" : "[y/N]";
   const answer = await ask(rl, `${question} ${hint}: `);
   if (!answer) return defaultYes;
   return answer.toLowerCase().startsWith("y");
+}
+
+async function askRequired(rl: SetupReadline, question: string): Promise<string> {
+  const answer = await ask(rl, `${question}: `);
+  if (!answer) {
+    throw new Error(`${question} 不能为空`);
+  }
+  return answer;
+}
+
+async function askNumberWithDefault(rl: SetupReadline, question: string, defaultValue: number): Promise<number> {
+  const answer = await askWithDefault(rl, question, String(defaultValue));
+  const value = Number(answer);
+  if (!Number.isInteger(value) || value < 1 || value > 65535) {
+    throw new Error(`${question} 必须是 1-65535 之间的整数`);
+  }
+  return value;
+}
+
+async function askEnvNameWithDefault(rl: SetupReadline, question: string, defaultValue: string): Promise<string> {
+  const envName = await askWithDefault(rl, question, defaultValue);
+  if (!ENV_NAME_RE.test(envName)) {
+    throw new Error(`${question} 必须匹配 ${ENV_NAME_RE.source}`);
+  }
+  return envName;
 }
 
 function ensureDir(dirPath: string): void {
@@ -133,7 +193,7 @@ function ensureDir(dirPath: string): void {
   }
 }
 
-async function selectModel(rl: ReadlineInterface, models: string[]): Promise<string> {
+async function selectModel(rl: SetupReadline, models: string[]): Promise<string> {
   if (models.length === 0) {
     return await ask(rl, "请输入模型名: ");
   }
@@ -159,7 +219,7 @@ interface ProviderSetupResult {
 }
 
 async function setupProvider(
-  rl: ReadlineInterface,
+  rl: SetupReadline,
   title: string,
   description: string,
   providers: ReadonlyArray<ProviderPreset>,
@@ -203,7 +263,7 @@ async function setupProvider(
   return { apiKey, baseURL, model, envKey };
 }
 
-async function setupDatabase(rl: ReadlineInterface): Promise<{ dbType: string; dbPath?: string }> {
+async function setupDatabase(rl: SetupReadline): Promise<DatabaseSetupResult> {
   console.log("\n── 存储配置 ────────────────────────────────────────");
 
   const dbIndex = await askChoice(rl, "选择向量存储方式：", DB_TYPES);
@@ -214,15 +274,48 @@ async function setupDatabase(rl: ReadlineInterface): Promise<{ dbType: string; d
     return { dbType, dbPath };
   }
 
-  return { dbType };
+  if (dbType === "postgres") {
+    console.log("\nPostgreSQL 需要已安装 pgvector 扩展，连接用户需具备创建扩展和表的权限。");
+    const host = await askWithDefault(rl, "PostgreSQL 主机", "localhost");
+    const port = await askNumberWithDefault(rl, "PostgreSQL 端口", 5432);
+    const database = await askWithDefault(rl, "PostgreSQL 数据库名", "mengshu");
+    const user = await askWithDefault(rl, "PostgreSQL 用户", "postgres");
+    const passwordEnvKey = await askEnvNameWithDefault(rl, "PostgreSQL 密码环境变量名", "PG_PASSWORD");
+    const password = await askRequired(rl, "请输入 PostgreSQL 密码");
+    const ssl = await askYesNo(rl, "是否启用 PostgreSQL SSL", false);
+    return {
+      dbType,
+      postgres: { host, port, database, user, password, passwordEnvKey, ssl },
+    };
+  }
+
+  console.log("\nSupabase 使用 PostgreSQL + pgvector；请使用 service role key。");
+  const url = await askRequired(rl, "Supabase Project URL");
+  const serviceKeyEnvKey = await askEnvNameWithDefault(rl, "Supabase service key 环境变量名", "SUPABASE_SERVICE_KEY");
+  const serviceKey = await askRequired(rl, "请输入 Supabase service role key");
+  return {
+    dbType,
+    supabase: { url, serviceKey, serviceKeyEnvKey },
+  };
+}
+
+function describeDatabase(database: DatabaseSetupResult): string {
+  if (database.dbType === "lancedb") {
+    return `lancedb (${database.dbPath})`;
+  }
+  if (database.dbType === "postgres") {
+    return `postgres (${database.postgres.user}@${database.postgres.host}:${database.postgres.port}/${database.postgres.database})`;
+  }
+  return `supabase (${database.supabase.url})`;
 }
 
 // ─── 主流程 ─────────────────────────────────────────────────────────────────
 
-export async function runInteractiveSetup(): Promise<SetupResult> {
-  const homeDir = resolveHomeDir();
-  const configPath = resolveConfigPath();
-  const envPath = resolveEnvPath();
+export async function runInteractiveSetup(options: InteractiveSetupOptions = {}): Promise<SetupResult> {
+  const homeDir = resolveHomeDir(options.homePathOptions);
+  const configPath = resolveConfigPath(options.homePathOptions);
+  const envPath = resolveEnvPath(options.homePathOptions);
+  const createRl = options.createReadline ?? createReadline;
 
   console.log("╔══════════════════════════════════════════════════════╗");
   console.log("║          梦枢 Mengshu - 初始化向导                  ║");
@@ -232,7 +325,7 @@ export async function runInteractiveSetup(): Promise<SetupResult> {
 
   if (fs.existsSync(configPath)) {
     console.log(`\n检测到已有配置: ${configPath}`);
-    const rl = createReadline();
+    const rl = createRl();
     const overwrite = await askYesNo(rl, "是否重新配置？", false);
     if (!overwrite) {
       rl.close();
@@ -242,7 +335,7 @@ export async function runInteractiveSetup(): Promise<SetupResult> {
     rl.close();
   }
 
-  const rl = createReadline();
+  const rl = createRl();
 
   try {
     // 1. Embedding
@@ -281,7 +374,7 @@ export async function runInteractiveSetup(): Promise<SetupResult> {
     console.log("\n── 配置预览 ────────────────────────────────────────");
     console.log(`  Embedding:  ${embedding.model} @ ${embedding.baseURL}`);
     console.log(`  LLM:        ${llm.model} @ ${llm.baseURL}`);
-    console.log(`  Storage:    ${database.dbType}${database.dbPath ? ` (${database.dbPath})` : ""}`);
+    console.log(`  Storage:    ${describeDatabase(database)}`);
     console.log(`  Config:     ${configPath}`);
     console.log(`  Env:        ${envPath}`);
 
@@ -308,8 +401,22 @@ export async function runInteractiveSetup(): Promise<SetupResult> {
       },
       dbType: database.dbType,
     };
-    if (database.dbPath) {
+    if (database.dbType === "lancedb") {
       config.dbPath = database.dbPath;
+    } else if (database.dbType === "postgres") {
+      config.postgres = {
+        host: database.postgres.host,
+        port: database.postgres.port,
+        database: database.postgres.database,
+        user: database.postgres.user,
+        password: `\${${database.postgres.passwordEnvKey}}`,
+        ssl: database.postgres.ssl,
+      };
+    } else {
+      config.supabase = {
+        url: database.supabase.url,
+        serviceKey: `\${${database.supabase.serviceKeyEnvKey}}`,
+      };
     }
 
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n", "utf8");
@@ -321,6 +428,11 @@ export async function runInteractiveSetup(): Promise<SetupResult> {
     }
     if (llm.apiKey && llm.apiKey !== "local" && llm.envKey !== embedding.envKey) {
       envEntries.set(llm.envKey, llm.apiKey);
+    }
+    if (database.dbType === "postgres") {
+      envEntries.set(database.postgres.passwordEnvKey, database.postgres.password);
+    } else if (database.dbType === "supabase") {
+      envEntries.set(database.supabase.serviceKeyEnvKey, database.supabase.serviceKey);
     }
 
     const envLines: string[] = ["# Mengshu environment variables"];
@@ -347,7 +459,7 @@ export async function runInteractiveSetup(): Promise<SetupResult> {
  * 检查全局配置是否就绪。
  * 返回 true 表示配置文件已存在。
  */
-export function isGlobalConfigReady(options?: import("../../core/paths.js").HomePathOptions): boolean {
+export function isGlobalConfigReady(options?: HomePathOptions): boolean {
   const configPath = resolveConfigPath(options);
   return fs.existsSync(configPath);
 }

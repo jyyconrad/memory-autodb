@@ -17,11 +17,11 @@
  */
 
 import { basename, resolve } from "node:path";
-import type { CommanderLike } from "./cli.js";
-import type { MemoryService } from "../../core/service-types.js";
-import type { MemoryVisibility } from "../../core/types.js";
-import { scopeToKey } from "../../core/scope.js";
-import { scopeToWorkspaceKey } from "../../core/scope-policy.js";
+import type { CommanderLike } from "./index.js";
+import type { MemoryService } from "../../../../core/service-types.js";
+import type { MemoryVisibility } from "../../../../core/types.js";
+import { scopeToKey } from "../../../../core/scope.js";
+import { scopeToWorkspaceKey } from "../../../../core/scope-policy.js";
 import { buildAgentService } from "./agent-service-helper.js";
 import {
   MANIFEST_FILENAME,
@@ -31,11 +31,11 @@ import {
   readProjectManifest,
   writeProjectIdentity,
   type MemoryAutodbManifest,
-} from "./manifest.js";
-import { readRegistry, writeRegistry, upsertProject, touchProjectOpenedAt } from "../../core/registry.js";
-import { resolveProjectManifestPath, type HomePathOptions } from "../../core/paths.js";
-import { isGlobalConfigReady, runInteractiveSetup } from "./cli-setup.js";
-import { registerIngestHistoryCommand } from "./cli-ingest-history.js";
+} from "../manifest.js";
+import { readRegistry, writeRegistry, upsertProject, touchProjectOpenedAt } from "../../../../core/registry.js";
+import { resolveProjectManifestPath, type HomePathOptions } from "../../../../core/paths.js";
+import { isGlobalConfigReady, runInteractiveSetup } from "./setup.js";
+import { registerIngestHistoryCommand } from "./ingest-history.js";
 
 /** project 命令依赖注入。service/getRecordCount 缺省时相关命令降级。 */
 export interface ProjectCliDeps {

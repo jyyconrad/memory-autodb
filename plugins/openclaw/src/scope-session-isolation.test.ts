@@ -11,8 +11,8 @@
 
 import { describe, expect, it } from "vitest";
 import { buildOpenClawScope } from "./scope.js";
-import { InMemoryCandidateRepository } from "../../lifecycle/candidate-repository.js";
-import type { MemoryScope } from "../../core/types.js";
+import { InMemoryCandidateRepository } from "../../../lifecycle/candidate-repository.js";
+import type { MemoryScope } from "../../../core/types.js";
 
 describe("OpenClaw scope sessionId 传递与候选区 session 隔离 (P1-Q5)", () => {
   it("buildOpenClawScope 正确传递 sessionId", () => {

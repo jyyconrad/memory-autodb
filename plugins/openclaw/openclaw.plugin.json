@@ -1,0 +1,88 @@
+{
+  "id": "mengshu-openclaw",
+  "legacyPluginIds": ["memory-autodb", "mengshu"],
+  "kind": "memory",
+  "name": "Mengshu OpenClaw",
+  "description": "mengshu memory middleware for OpenClaw, sharing memory data through the configured PostgreSQL backend.",
+  "version": "0.1.0",
+  "uiHints": {
+    "embedding.apiKey": {
+      "label": "OpenAI API Key",
+      "sensitive": true,
+      "placeholder": "sk-proj-...",
+      "help": "API key for OpenAI embeddings (or use ${OPENAI_API_KEY})"
+    },
+    "embedding.baseURL": {
+      "label": "OpenAI Base URL",
+      "placeholder": "https://api.openai.com/v1"
+    },
+    "dbPath": {
+      "label": "LanceDB Path",
+      "placeholder": "~/.mengshu/memory/lancedb",
+      "advanced": true,
+      "help": "Only used when dbType=lancedb. PostgreSQL mode ignores dbPath."
+    },
+    "postgres.password": {
+      "label": "PostgreSQL Password",
+      "sensitive": true,
+      "placeholder": "${PG_PASSWORD}",
+      "help": "PostgreSQL password for dbType=postgres. Prefer an environment variable."
+    },
+    "supabase.serviceKey": {
+      "label": "Supabase Service Role Key",
+      "sensitive": true,
+      "placeholder": "${SUPABASE_SERVICE_KEY}",
+      "help": "Supabase service role key for dbType=supabase. Do not use the anon key."
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+      "embedding": {
+        "type": "object",
+        "properties": {
+          "apiKey": { "type": "string" },
+          "baseURL": { "type": "string" },
+          "model": { "type": "string" }
+        },
+        "required": ["apiKey", "baseURL"]
+      },
+      "dbType": {
+        "type": "string",
+        "enum": ["lancedb", "supabase", "postgres"],
+        "default": "postgres"
+      },
+      "dbPath": {
+        "type": "string"
+      },
+      "postgres": {
+        "type": "object",
+        "properties": {
+          "host": { "type": "string" },
+          "port": { "type": "number" },
+          "database": { "type": "string" },
+          "user": { "type": "string" },
+          "password": { "type": "string" },
+          "ssl": { "type": "boolean" }
+        }
+      },
+      "supabase": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "serviceKey": { "type": "string" }
+        }
+      },
+      "autoCapture": {
+        "type": "boolean",
+        "default": true
+      },
+      "autoRecall": {
+        "type": "boolean",
+        "default": true
+      }
+    },
+    "required": ["embedding"]
+  }
+}

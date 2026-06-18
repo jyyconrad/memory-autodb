@@ -2,11 +2,11 @@ import { describe, expect, test, vi } from "vitest";
 import type {
   SourceAdapter,
   SourceAdapterContext,
-} from "../../ingest/agent-history/types.js";
+} from "../../../../ingest/agent-history/types.js";
 import {
   buildHistoryDryRunReport,
   registerIngestHistoryCommand,
-} from "./cli-ingest-history.js";
+} from "./ingest-history.js";
 
 class FakeCommand {
   subcommands: FakeCommand[] = [];

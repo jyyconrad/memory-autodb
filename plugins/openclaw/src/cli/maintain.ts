@@ -5,9 +5,9 @@
  * - calculate-centrality: 计算 entity 的 graphCentrality
  */
 
-import type { CommanderLike } from "./cli.js";
-import type { CentralityCalculator } from "../../graph/centrality-calculator.js";
-import type { MemoryScope } from "../../core/types.js";
+import type { CommanderLike } from "./index.js";
+import type { CentralityCalculator } from "../../../../graph/centrality-calculator.js";
+import type { MemoryScope } from "../../../../core/types.js";
 
 export interface MaintainCliDeps {
   centralityCalculator: CentralityCalculator;

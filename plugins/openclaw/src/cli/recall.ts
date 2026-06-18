@@ -13,17 +13,17 @@
  *   - 纯展示命令，不修改任何记忆。
  */
 
-import type { CommanderLike } from "./cli.js";
-import type { MemoryService } from "../../core/service-types.js";
-import type { MemoryRecord, MemoryScope, RecallHit } from "../../core/types.js";
+import type { CommanderLike } from "./index.js";
+import type { MemoryService } from "../../../../core/service-types.js";
+import type { MemoryRecord, MemoryScope, RecallHit } from "../../../../core/types.js";
 import {
   computeNodeScoreWithBreakdown,
   DEFAULT_RECALL_WEIGHTS,
   type NodeScoreBreakdown,
   type RecallWeights,
   type ImportanceMetadata,
-} from "../../core/recall-scoring.js";
-import { detectExplicitSave, type SourceKind } from "../../processing/importance-score.js";
+} from "../../../../core/recall-scoring.js";
+import { detectExplicitSave, type SourceKind } from "../../../../processing/importance-score.js";
 
 /** recall 命令依赖注入。 */
 export interface RecallCliDeps {
@@ -115,8 +115,17 @@ function extractImportanceMetadata(record: MemoryRecord): ImportanceMetadata | u
   };
 }
 
-function fmt(value: number): string {
-  return value.toFixed(3);
+function fmt(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value.toFixed(3);
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed.toFixed(3);
+    }
+  }
+  return "0.000";
 }
 
 /** 打印单条命中的 6 因子评分明细。 */

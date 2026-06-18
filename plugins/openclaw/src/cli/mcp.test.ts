@@ -8,9 +8,9 @@
  */
 
 import { describe, expect, test, vi } from "vitest";
-import { registerMcpCliCommands } from "./cli-mcp.js";
-import type { CommanderLike } from "./cli.js";
-import type { MemoryService } from "../../core/service-types.js";
+import { registerMcpCliCommands } from "./mcp.js";
+import type { CommanderLike } from "./index.js";
+import type { MemoryService } from "../../../../core/service-types.js";
 
 /** 捕获注册的命令名、描述与 action 的 fake CommanderLike。 */
 function makeFakeCommander(): {

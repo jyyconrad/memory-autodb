@@ -1,17 +1,15 @@
-import type { CommanderLike } from "./cli.js";
+import type { CommanderLike } from "./index.js";
 import type {
   AgentHistoryProvider,
   DryRunReport,
   SourceAdapter,
   SourceAdapterContext,
   SourceMappingRow,
-} from "../../ingest/agent-history/types.js";
-import { emptyCandidateEstimates } from "../../ingest/agent-history/types.js";
-import {
-  claudeCodeSourceAdapter,
-  codexSourceAdapter,
-  openClawSourceAdapter,
-} from "../sources/index.js";
+} from "../../../../ingest/agent-history/types.js";
+import { emptyCandidateEstimates } from "../../../../ingest/agent-history/types.js";
+import { claudeCodeSourceAdapter } from "../../../claude-code/sources/adapter.js";
+import { codexSourceAdapter } from "../../../codex/sources/adapter.js";
+import { openClawSourceAdapter } from "../sources/adapter.js";
 
 export interface IngestHistoryCliDeps {
   adapters?: SourceAdapter[];

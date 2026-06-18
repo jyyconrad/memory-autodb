@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
-import type { MemoryService, StoreMemoryInput, RecallInput } from "../../core/service-types.js";
-import type { ContextBlock, MemoryRecord, RecallResult } from "../../core/types.js";
+import type { MemoryService, StoreMemoryInput, RecallInput } from "../../../core/service-types.js";
+import type { ContextBlock, MemoryRecord, RecallResult } from "../../../core/types.js";
 import {
   handleAgentEndCapture,
   handleBeforeAgentStartRecall,

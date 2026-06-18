@@ -20,8 +20,8 @@ import {
   extractWhyDetails,
   formatWhyReport,
   resolveTarget,
-} from "./cli-why.js";
-import type { MemoryRecord, MemoryScope } from "../../core/types.js";
+} from "./why.js";
+import type { MemoryRecord, MemoryScope } from "../../../../core/types.js";
 
 const baseScope: MemoryScope = {
   tenantId: "local",

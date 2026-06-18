@@ -23,9 +23,9 @@
  * - 迁移失败时输出明确错误，不做部分回滚（用户可用备份恢复）。
  */
 
-import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, cpSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, cpSync, readFileSync, writeFileSync } from "node:fs";
 import { join, basename } from "node:path";
-import type { CommanderLike } from "./cli.js";
+import type { CommanderLike } from "./index.js";
 import {
   resolveHomeDir,
   resolveLegacyHomeDir,
@@ -36,7 +36,12 @@ import {
   ENV_FILENAME,
   MEMORY_DIRNAME,
   LANCEDB_DIRNAME,
-} from "../../core/paths.js";
+} from "../../../../core/paths.js";
+import {
+  isOpenClawMemoryPluginId,
+  OPENCLAW_LEGACY_MEMORY_PLUGIN_IDS,
+  OPENCLAW_MEMORY_PLUGIN_ID,
+} from "../plugin-id.js";
 
 /** 迁移选项 */
 export interface MigrateHomeOptions {
@@ -48,6 +53,23 @@ export interface MigrateHomeOptions {
   force?: boolean;
   /** 全局 home 路径选项 */
   homePathOptions?: HomePathOptions;
+}
+
+export interface MigrateOpenClawPluginIdOptions {
+  dryRun?: boolean;
+  configPath?: string;
+  backup?: boolean;
+  keepLegacyEntry?: boolean;
+}
+
+export interface OpenClawPluginIdMigrationPlan {
+  configPath: string;
+  fromSlot?: string;
+  toSlot: typeof OPENCLAW_MEMORY_PLUGIN_ID;
+  movedEntryFrom?: string;
+  createdEntry: boolean;
+  disabledLegacyEntries: string[];
+  changed: boolean;
 }
 
 /** 迁移任务项 */
@@ -249,6 +271,169 @@ function scanProjectPointers(legacyHome: string, maxDepth: number = 3): string[]
   return pointers;
 }
 
+function readJsonObject(filePath: string): Record<string, unknown> {
+  return JSON.parse(readFileSync(filePath, "utf8")) as Record<string, unknown>;
+}
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function objectRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function disabledLegacyEntry(entry: unknown): Record<string, unknown> {
+  const cloned = cloneJson(objectRecord(entry));
+  return {
+    ...cloned,
+    enabled: false,
+  };
+}
+
+export function planOpenClawPluginIdMigration(
+  rawConfig: Record<string, unknown>,
+  options: Pick<MigrateOpenClawPluginIdOptions, "configPath" | "keepLegacyEntry"> = {},
+): { nextConfig: Record<string, unknown>; plan: OpenClawPluginIdMigrationPlan } {
+  const nextConfig = cloneJson(rawConfig);
+  const pluginRoot = nextConfig.plugins && typeof nextConfig.plugins === "object" && !Array.isArray(nextConfig.plugins)
+    ? objectRecord(nextConfig.plugins)
+    : nextConfig;
+  const slots = objectRecord(pluginRoot.slots);
+  pluginRoot.slots = slots;
+  const entries = objectRecord(pluginRoot.entries);
+  pluginRoot.entries = entries;
+  const keepLegacyEntry = options.keepLegacyEntry ?? false;
+
+  const legacyIds = [...OPENCLAW_LEGACY_MEMORY_PLUGIN_IDS];
+  const currentSlot = typeof slots.memory === "string" ? slots.memory : undefined;
+  const candidateIds = [
+    currentSlot,
+    OPENCLAW_MEMORY_PLUGIN_ID,
+    ...legacyIds,
+  ].filter((id): id is string => typeof id === "string");
+  const sourceEntryId = candidateIds.find((id) => entries[id] !== undefined);
+  const sourceEntry = sourceEntryId ? entries[sourceEntryId] : undefined;
+  const hadCanonicalEntry = entries[OPENCLAW_MEMORY_PLUGIN_ID] !== undefined;
+  const disabledLegacyEntries: string[] = [];
+
+  if (sourceEntry !== undefined && !hadCanonicalEntry) {
+    entries[OPENCLAW_MEMORY_PLUGIN_ID] = cloneJson(sourceEntry);
+  }
+
+  for (const legacyId of legacyIds) {
+    if (entries[legacyId] !== undefined && keepLegacyEntry) {
+      entries[legacyId] = disabledLegacyEntry(entries[legacyId]);
+      disabledLegacyEntries.push(legacyId);
+    } else if (entries[legacyId] !== undefined) {
+      delete entries[legacyId];
+    }
+  }
+
+  const knownMemorySlot = currentSlot === undefined || isOpenClawMemoryPluginId(currentSlot);
+  if (knownMemorySlot) {
+    slots.memory = OPENCLAW_MEMORY_PLUGIN_ID;
+  }
+
+  const changed = JSON.stringify(rawConfig) !== JSON.stringify(nextConfig);
+  return {
+    nextConfig,
+    plan: {
+      configPath: options.configPath ?? "~/.openclaw/conf/plugins.json",
+      fromSlot: currentSlot,
+      toSlot: OPENCLAW_MEMORY_PLUGIN_ID,
+      movedEntryFrom: sourceEntryId && sourceEntryId !== OPENCLAW_MEMORY_PLUGIN_ID ? sourceEntryId : undefined,
+      createdEntry: sourceEntry !== undefined && !hadCanonicalEntry,
+      disabledLegacyEntries,
+      changed,
+    },
+  };
+}
+
+function printOpenClawPluginIdMigrationPlan(plan: OpenClawPluginIdMigrationPlan): void {
+  console.log("=".repeat(60));
+  console.log("OpenClaw 插件 ID 迁移");
+  console.log("=".repeat(60));
+  console.log(`配置文件: ${plan.configPath}`);
+  console.log(`memory slot: ${plan.fromSlot ?? "<未设置>"} → ${plan.toSlot}`);
+  if (plan.movedEntryFrom) {
+    console.log(`entry: ${plan.movedEntryFrom} → ${OPENCLAW_MEMORY_PLUGIN_ID}`);
+  } else {
+    console.log(`entry: ${OPENCLAW_MEMORY_PLUGIN_ID}`);
+  }
+  if (plan.disabledLegacyEntries.length > 0) {
+    console.log(`legacy entries disabled: ${plan.disabledLegacyEntries.join(", ")}`);
+  } else {
+    console.log(`legacy entries removed: ${OPENCLAW_LEGACY_MEMORY_PLUGIN_IDS.join(", ")}`);
+  }
+  console.log(`需要写入: ${plan.changed ? "是" : "否"}`);
+  console.log("=".repeat(60));
+}
+
+function defaultOpenClawPluginConfigPaths(): string[] {
+  const legacyHome = resolveLegacyHomeDir();
+  return [
+    join(legacyHome, "openclaw.json"),
+    join(legacyHome, "conf", "plugins.json"),
+  ].filter((path, index, paths) => paths.indexOf(path) === index && existsSync(path));
+}
+
+async function migrateOpenClawPluginIdFile(
+  configPath: string,
+  options: Omit<MigrateOpenClawPluginIdOptions, "configPath"> = {},
+): Promise<OpenClawPluginIdMigrationPlan> {
+  const dryRun = options.dryRun ?? true;
+  if (!existsSync(configPath)) {
+    throw new Error(`OpenClaw 插件配置不存在: ${configPath}`);
+  }
+
+  const rawConfig = readJsonObject(configPath);
+  const { nextConfig, plan } = planOpenClawPluginIdMigration(rawConfig, {
+    configPath,
+    keepLegacyEntry: options.keepLegacyEntry,
+  });
+  printOpenClawPluginIdMigrationPlan(plan);
+
+  if (dryRun) {
+    console.log("\n这是预览模式，未写入配置。执行迁移请运行：");
+    console.log("  ms migrate-openclaw-plugin-id --execute");
+    return plan;
+  }
+
+  if (!plan.changed) {
+    console.log("\n无需迁移。");
+    return plan;
+  }
+
+  if (options.backup ?? true) {
+    const backupPath = `${configPath}.bak-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+    copyFileSync(configPath, backupPath);
+    console.log(`\n已备份: ${backupPath}`);
+  }
+  writeFileSync(configPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8");
+  console.log(`已写入: ${configPath}`);
+  return plan;
+}
+
+export async function migrateOpenClawPluginId(options: MigrateOpenClawPluginIdOptions = {}): Promise<OpenClawPluginIdMigrationPlan[]> {
+  const configPaths = options.configPath ? [options.configPath] : defaultOpenClawPluginConfigPaths();
+  if (configPaths.length === 0) {
+    throw new Error("未找到 OpenClaw 插件配置文件：~/.openclaw/openclaw.json 或 ~/.openclaw/conf/plugins.json");
+  }
+  const plans: OpenClawPluginIdMigrationPlan[] = [];
+  for (const configPath of configPaths) {
+    plans.push(await migrateOpenClawPluginIdFile(configPath, {
+      dryRun: options.dryRun,
+      backup: options.backup,
+      keepLegacyEntry: options.keepLegacyEntry,
+    }));
+  }
+  return plans;
+}
+
 /**
  * 执行迁移
  */
@@ -412,6 +597,28 @@ export function registerMigrateHomeCommand(
         backup: cmdOptions.backup ?? false,
         force: cmdOptions.force ?? false,
         homePathOptions: options?.homePathOptions,
+      });
+    });
+
+  memory
+    .command("migrate-openclaw-plugin-id")
+    .description("迁移 OpenClaw memory 插件 id：memory-autodb/mengshu → mengshu-openclaw（默认预览模式）")
+    .option("--execute", "执行迁移（不带此参数只打印计划）")
+    .option("--config <path>", "OpenClaw 配置文件路径（默认同时处理 ~/.openclaw/openclaw.json 与 ~/.openclaw/conf/plugins.json）")
+    .option("--no-backup", "执行时不备份配置文件")
+    .option("--keep-legacy-entry", "迁移后保留旧 entry 并置为 disabled（可能触发 OpenClaw stale config warning）")
+    .action(async (...args: unknown[]) => {
+      const cmdOptions = args[0] as {
+        execute?: boolean;
+        config?: string;
+        backup?: boolean;
+        keepLegacyEntry?: boolean;
+      };
+      await migrateOpenClawPluginId({
+        dryRun: !cmdOptions.execute,
+        configPath: cmdOptions.config,
+        backup: cmdOptions.backup ?? true,
+        keepLegacyEntry: cmdOptions.keepLegacyEntry ?? false,
       });
     });
 }

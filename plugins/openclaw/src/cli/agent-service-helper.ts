@@ -13,9 +13,9 @@
  * - 不修改入参，返回新对象。
  */
 
-import { AgentFastPathService } from "../../api/agent-fast-path.js";
-import type { MemoryService } from "../../core/service-types.js";
-import type { MemoryRecord, MemoryScope } from "../../core/types.js";
+import { AgentFastPathService } from "../../../../api/agent-fast-path.js";
+import type { MemoryService } from "../../../../core/service-types.js";
+import type { MemoryRecord, MemoryScope } from "../../../../core/types.js";
 
 /** 从 recall 命中里筛出形态合法的 MemoryRecord（需含 text/category）。 */
 export function extractRecords(hits: Array<{ record: unknown }>): MemoryRecord[] {

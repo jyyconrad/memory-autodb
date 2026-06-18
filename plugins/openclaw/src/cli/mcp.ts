@@ -15,10 +15,10 @@
  * - 与 cli.ts 共用 CommanderLike 鸭子类型，不引入 commander 硬依赖。
  */
 
-import type { CommanderLike } from "./cli.js";
-import type { MemoryService } from "../../core/service-types.js";
-import type { AgentFastPathService } from "../../api/agent-fast-path.js";
-import { startMcpStdioServer } from "../mcp/stdio-server.js";
+import type { CommanderLike } from "./index.js";
+import type { MemoryService } from "../../../../core/service-types.js";
+import type { AgentFastPathService } from "../../../../packages/api/src/agent-fast-path/index.js";
+import { startMcpStdioServer } from "../../../../packages/mcp/src/stdio-server.js";
 
 /** mcp 命令依赖注入。 */
 export interface McpCliDeps {

@@ -1,15 +1,18 @@
 import { Type } from "@sinclair/typebox";
+import { isAbsolute } from "node:path";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import {
   MEMORY_CATEGORIES,
   type MemoryCategory,
   type MemoryConfig,
-} from "../../config.js";
+  vectorDimsForModel,
+} from "../../../config.js";
+import { expandHome } from "../../../core/paths.js";
 import {
   createMengshuRuntime,
   toFriendlyMengshuError,
   type MengshuRuntime,
-} from "../../runtime.js";
+} from "../../../runtime.js";
 import {
   handleMemoryCleanup,
   handleMemoryForget,
@@ -24,16 +27,62 @@ import {
   handleBeforeAgentStartRecall,
   shouldCapture,
 } from "./hooks.js";
-import { registerMemoryServerCliCommands } from "./cli.js";
-import { registerProjectCliCommands } from "./cli-project.js";
-import { registerDoctorCliCommands } from "./cli-doctor.js";
-import { registerMcpCliCommands } from "./cli-mcp.js";
-import { registerMigrateHomeCommand } from "./cli-migrate-home.js";
-import { registerMaintainCommands } from "./cli-maintain.js";
-import { registerLegacyCliCommands } from "./cli-legacy.js";
+import { registerMemoryServerCliCommands } from "./cli/index.js";
+import { registerProjectCliCommands } from "./cli/project.js";
+import { registerDoctorCliCommands } from "./cli/doctor.js";
+import { registerMcpCliCommands } from "./cli/mcp.js";
+import { registerMigrateHomeCommand } from "./cli/migrate-home.js";
+import { registerMaintainCommands } from "./cli/maintain.js";
+import { registerLegacyCliCommands } from "./cli/legacy.js";
+import {
+  OPENCLAW_LEGACY_MEMORY_PLUGIN_IDS,
+  OPENCLAW_MEMORY_PLUGIN_ID,
+} from "./plugin-id.js";
+
+export {
+  OPENCLAW_LEGACY_MEMORY_PLUGIN_IDS,
+  OPENCLAW_MEMORY_PLUGIN_ID,
+} from "./plugin-id.js";
 
 export interface RegisterOpenClawAdapterOptions {
   runtime?: MengshuRuntime;
+}
+
+type OpenClawMemoryPromptSectionBuilder = (params: {
+  availableTools: Set<string>;
+  citationsMode?: string;
+}) => string[];
+
+type OpenClawMemoryFlushPlanResolver = (params: {
+  cfg?: unknown;
+  nowMs?: number;
+}) => null;
+
+type OpenClawMemoryRuntime = {
+  getMemorySearchManager(params: {
+    cfg: unknown;
+    agentId: string;
+    purpose?: "default" | "status";
+  }): Promise<{
+    manager: ReturnType<typeof createOpenClawMemorySearchManager> | null;
+    error?: string;
+  }>;
+  resolveMemoryBackendConfig(params: { cfg: unknown; agentId: string }): { backend: "builtin" };
+  closeAllMemorySearchManagers?(): Promise<void>;
+};
+
+type OpenClawMemoryPluginApi = OpenClawPluginApi & {
+  registerMemoryPromptSection?: (builder: OpenClawMemoryPromptSectionBuilder) => void;
+  registerMemoryFlushPlan?: (resolver: OpenClawMemoryFlushPlanResolver) => void;
+  registerMemoryRuntime?: (runtime: OpenClawMemoryRuntime) => void;
+};
+
+export function resolveOpenClawDbPath(
+  dbPath: string,
+  resolvePath: (path: string) => string,
+): string {
+  const expanded = expandHome(dbPath);
+  return isAbsolute(expanded) ? expanded : resolvePath(expanded);
 }
 
 export function registerOpenClawAdapter(
@@ -42,7 +91,9 @@ export function registerOpenClawAdapter(
   options: RegisterOpenClawAdapterOptions = {},
 ): MengshuRuntime {
   try {
-    const resolvedDbPath = api.resolvePath(config.dbPath!);
+    const resolvedDbPath = config.dbType === "postgres"
+      ? ""
+      : resolveOpenClawDbPath(config.dbPath ?? "~/.mengshu/memory/lancedb", (path) => api.resolvePath(path));
     const runtime = options.runtime ?? createMengshuRuntime({
       config,
       resolvedDbPath,
@@ -50,11 +101,11 @@ export function registerOpenClawAdapter(
       logger: api.logger,
     });
 
-    api.logger.info?.(`mengshu: plugin registered (dbType: ${config.dbType}, lazy init)`);
     registerOpenClawTools(api, runtime);
     registerOpenClawCli(api, runtime);
     registerOpenClawHooks(api, runtime);
     registerOpenClawService(api, runtime);
+    registerOpenClawMemoryRuntime(api, runtime);
     return runtime;
   } catch (error) {
     throw toFriendlyMengshuError(error);
@@ -298,16 +349,116 @@ function registerOpenClawHooks(api: OpenClawPluginApi, runtime: MengshuRuntime):
 
 function registerOpenClawService(api: OpenClawPluginApi, runtime: MengshuRuntime): void {
   api.registerService({
-    id: "mengshu",
+    id: OPENCLAW_MEMORY_PLUGIN_ID,
     start: async () => {
       await runtime.start();
       api.logger.info?.(
-        `mengshu: initialized (dbType: ${runtime.config.dbType}, model: ${runtime.config.embedding.model})`,
+        `${OPENCLAW_MEMORY_PLUGIN_ID}: initialized (dbType: ${runtime.config.dbType}, model: ${runtime.config.embedding.model})`,
       );
     },
     stop: async () => {
       await runtime.stop();
-      api.logger.info?.("mengshu: stopped");
+      api.logger.info?.(`${OPENCLAW_MEMORY_PLUGIN_ID}: stopped`);
     },
   });
+}
+
+function registerOpenClawMemoryRuntime(api: OpenClawPluginApi, runtime: MengshuRuntime): void {
+  const memoryApi = api as OpenClawMemoryPluginApi;
+  if (typeof memoryApi.registerMemoryPromptSection === "function") {
+    memoryApi.registerMemoryPromptSection(({ availableTools }) => {
+      const hasMengshuTool =
+        availableTools.has("memory_recall") ||
+        availableTools.has("memory_store") ||
+        availableTools.has("memory_context_fast");
+      if (!hasMengshuTool) {
+        return [];
+      }
+      return [
+        "## Mengshu Memory",
+        "Use the memory_recall or memory_context_fast tools to retrieve durable user preferences, project decisions, and reusable working context before acting.",
+        "Use memory_store only for stable, verified facts or preferences that should persist across OpenClaw, Codex, and other agents sharing ~/.mengshu.",
+        "",
+      ];
+    });
+  }
+
+  if (typeof memoryApi.registerMemoryFlushPlan === "function") {
+    memoryApi.registerMemoryFlushPlan(() => null);
+  }
+
+  if (typeof memoryApi.registerMemoryRuntime === "function") {
+    memoryApi.registerMemoryRuntime({
+      async getMemorySearchManager() {
+        return {
+          manager: createOpenClawMemorySearchManager(runtime),
+        };
+      },
+      resolveMemoryBackendConfig() {
+        return { backend: "builtin" };
+      },
+      async closeAllMemorySearchManagers() {
+        await runtime.stop();
+      },
+    });
+  }
+}
+
+function createOpenClawMemorySearchManager(runtime: MengshuRuntime) {
+  const postgres = runtime.config.postgres;
+  const datastore = runtime.config.dbType === "postgres" && postgres
+    ? `${postgres.user}@${postgres.host}:${postgres.port}/${postgres.database}`
+    : runtime.resolvedDbPath;
+
+  return {
+    status() {
+      const model = runtime.config.embedding.model;
+      let dims: number | undefined;
+      try {
+        dims = model ? vectorDimsForModel(model) : undefined;
+      } catch {
+        dims = undefined;
+      }
+      return {
+        backend: "builtin" as const,
+        provider: "mengshu",
+        model,
+        dirty: false,
+        dbPath: runtime.config.dbType === "lancedb" ? runtime.resolvedDbPath : undefined,
+        sources: ["memory" as const],
+        vector: {
+          enabled: true,
+          dims,
+        },
+        custom: {
+          pluginId: OPENCLAW_MEMORY_PLUGIN_ID,
+          home: "~/.mengshu",
+          dbType: runtime.config.dbType,
+          datastore,
+          sharedAcrossAgents: true,
+        },
+      };
+    },
+    async probeEmbeddingAvailability() {
+      try {
+        await runtime.embeddings.embed("mengshu memory health check");
+        return { ok: true };
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    },
+    async probeVectorAvailability() {
+      const health = await runtime.memoryService.health();
+      return health.ok;
+    },
+    async sync() {
+      await runtime.start();
+    },
+    async close() {
+      // Runtime lifecycle is owned by the registered OpenClaw service.
+    },
+  };
 }

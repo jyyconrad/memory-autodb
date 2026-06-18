@@ -16,7 +16,7 @@
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   registerDoctorCliCommands,
@@ -26,8 +26,8 @@ import {
   checkModel,
   checkDisk,
   checkManifest,
-} from "./cli-doctor.js";
-import { MANIFEST_FILENAME } from "./manifest.js";
+} from "./doctor.js";
+import { MANIFEST_FILENAME } from "../manifest.js";
 
 /** 鸭子类型 fake：支持 command 字符串含位置参数（doctor [dir] / connect [appId]）。 */
 class FakeCommand {
@@ -169,6 +169,13 @@ describe("checkDisk", () => {
     expect(result.status).toBe("warning");
   });
 
+  test("带 home 前缀的 dbPath 按全局 home 展开，不保留为项目相对路径", () => {
+    const result = checkDisk("~/definitely-missing-mengshu-test/sub/db");
+    expect(result.status).toBe("warning");
+    expect(result.message).toContain(join(homedir(), "definitely-missing-mengshu-test", "sub", "db"));
+    expect(result.message).not.toContain("/~/");
+  });
+
   test("无 dbPath 返回 warning", () => {
     expect(checkDisk(undefined).status).toBe("warning");
   });
@@ -236,6 +243,31 @@ describe("ms doctor", () => {
 
     await ms.find("doctor")?.actionHandler?.(workDir, {});
     expect(logs.join("\n")).toMatch(/FATAL/);
+  });
+
+  test("PostgreSQL 配置跳过本地 dbPath 磁盘 warning", async () => {
+    const ms = new FakeCommand("ms");
+    registerDoctorCliCommands(ms as never, {
+      config: {
+        ...validConfig,
+        dbType: "postgres",
+        dbPath: undefined,
+        postgres: {
+          host: "127.0.0.1",
+          port: 5432,
+          database: "mengshu",
+          user: "postgres",
+          password: "secret",
+        },
+      },
+      service: { health: vi.fn(async () => ({ ok: true, records: 3 })) } as never,
+      embeddings: { embed: vi.fn(async () => [0.1]) },
+    });
+
+    await ms.find("doctor")?.actionHandler?.(workDir, {});
+    const text = logs.join("\n");
+    expect(text).toContain("[info] storage: PostgreSQL 后端，跳过本地 dbPath 磁盘检查");
+    expect(text).not.toContain("未配置 dbPath");
   });
 });
 

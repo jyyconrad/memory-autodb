@@ -19,9 +19,9 @@
  * - 与 cli.ts 共用 CommanderLike 鸭子类型，避免引入 commander 硬依赖。
  */
 
-import type { CommanderLike } from "./cli.js";
-import type { MemoryService } from "../../core/service-types.js";
-import type { MemoryRecord, MemoryScope, RecallHit } from "../../core/types.js";
+import type { CommanderLike } from "./index.js";
+import type { MemoryService } from "../../../../core/service-types.js";
+import type { MemoryRecord, MemoryScope, RecallHit } from "../../../../core/types.js";
 
 /** why 命令依赖注入。service/scope 缺省时降级。 */
 export interface WhyCliDeps {
