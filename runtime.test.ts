@@ -2,6 +2,8 @@ import { describe, expect, test, vi } from "vitest";
 import type { DatabaseProvider, MemoryEntry, MemoryQueryOptions } from "./db/types.js";
 import { createMengshuRuntime, toFriendlyMengshuError } from "./runtime.js";
 import type { MemoryConfig } from "./config.js";
+import { PostgresTreeRepository } from "./tree/postgres-repository.js";
+import type { Embeddings } from "./processing/embeddings.js";
 
 class FakeDb implements DatabaseProvider {
   initialize = vi.fn(async () => {});
@@ -63,6 +65,58 @@ describe("createMengshuRuntime", () => {
         db: new FakeDb(),
       })
     ).toThrow("[Mengshu 配置错误] embedding.apiKey 未设置");
+  });
+
+  test("uses durable Postgres tree repository for postgres config", () => {
+    const db = new FakeDb();
+    const runtime = createMengshuRuntime({
+      config: {
+        ...config,
+        dbType: "postgres",
+        dbPath: undefined,
+        postgres: {
+          host: "127.0.0.1",
+          port: 5432,
+          database: "test",
+          user: "postgres",
+          password: "postgres",
+        },
+      },
+      resolvedDbPath: "",
+      appId: "test-app",
+      db,
+    });
+
+    expect(runtime.treeRepository).toBeInstanceOf(PostgresTreeRepository);
+  });
+
+  test("agent observeLight persists observations through shared memory service", async () => {
+    const db = new FakeDb();
+    const embeddings = {
+      embed: vi.fn(async () => Array.from({ length: 1536 }, () => 0.01)),
+      embedBatch: vi.fn(),
+    } as unknown as Embeddings;
+    const runtime = createMengshuRuntime({
+      config,
+      resolvedDbPath: "/tmp/mengshu-test",
+      appId: "test-app",
+      db,
+      embeddings,
+    });
+
+    const response = await runtime.agentFastPath.observeLight({
+      scope: runtime.defaultScope,
+      eventType: "user_input",
+      text: "用户要求所有 agent 共享 OpenClaw Postgres 记忆库。",
+      intent: "remember",
+    });
+
+    expect(response.ack).toBe(true);
+    expect(db.store).toHaveBeenCalledTimes(1);
+    const stored = db.store.mock.calls[0]?.[0]?.[0];
+    expect(stored?.text).toContain("OpenClaw Postgres");
+    expect(stored?.tableName).toBe("memories");
+    expect(stored?.vector).toHaveLength(1536);
   });
 
   test("maps common provider errors to friendly errors", () => {

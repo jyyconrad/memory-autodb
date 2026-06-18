@@ -9,8 +9,9 @@
  */
 
 import type { JobRecord, JobRepository } from "../storage/repositories/types.js";
+export type { JobHandler } from "../packages/core/src/runtime/jobs.js";
 
-export type JobHandler = (job: JobRecord) => Promise<unknown>;
+import type { JobHandler } from "../packages/core/src/runtime/jobs.js";
 
 export interface RunNextJobOptions {
   workerId: string;

@@ -177,4 +177,21 @@ describe("middleware config", () => {
       fs.rmSync(tmpHome, { recursive: true, force: true });
     }
   });
+
+  test("does not synthesize dbPath for postgres config", () => {
+    const config = memoryConfigSchema.parse({
+      ...baseConfig,
+      dbType: "postgres",
+      postgres: {
+        host: "127.0.0.1",
+        port: 5432,
+        database: "mengshu",
+        user: "postgres",
+        password: "secret",
+      },
+    });
+
+    expect(config.dbType).toBe("postgres");
+    expect(config.dbPath).toBeUndefined();
+  });
 });
