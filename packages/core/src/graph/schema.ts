@@ -42,6 +42,9 @@ export const RELATION_PREDICATES = [
   "fixed_by",
   "supersedes",
   "related_to",
+  "belongs_to",
+  "precedes",
+  "conflicts_with",
 ] as const;
 
 export type RelationPredicate = (typeof RELATION_PREDICATES)[number];

@@ -185,6 +185,11 @@ export class OpenAiLlmClient implements LlmClient {
     this.limit = pLimit(options.concurrency ?? DEFAULT_CONCURRENCY);
   }
 
+  /** 默认模型名（用于 eval trace manifest 记录）。 */
+  get modelName(): string {
+    return this.defaultModel;
+  }
+
   /**
    * 根据 modelType 选择对应的模型。
    * 优先使用专用模型，未配置时回退到默认模型。

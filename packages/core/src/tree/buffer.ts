@@ -83,6 +83,17 @@ export class InMemoryTreeRepository implements TreeRepository {
       .filter((node) => !filter.treeKey || node.treeKey === filter.treeKey)
       .sort((left, right) => (right.sealedAt ?? right.createdAt) - (left.sealedAt ?? left.createdAt));
   }
+
+  async getParent(nodeId: string): Promise<TreeSummaryNode | undefined> {
+    const parents = Array.from(this.summaries.values()).filter((node) => node.childNodeIds.includes(nodeId));
+    if (parents.length === 0) {
+      return undefined;
+    }
+    if (parents.length > 1) {
+      console.warn(`[InMemoryTreeRepository] getParent: multiple parents found for node ${nodeId}, returning first`);
+    }
+    return parents[0];
+  }
 }
 
 export async function appendLeafToBuffer(

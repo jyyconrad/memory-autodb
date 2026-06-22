@@ -72,7 +72,11 @@ describe("LegacyDatabaseAdapter", () => {
 
     await adapter.store([adapter.memoryEntryToRecord(entry)]);
 
-    expect(provider.stored).toEqual([[entry]]);
+    // category=preference -> kind=preference -> semanticType=profile（边界统一推导），
+    // 该值回写进 metadata.semanticType，因此存回的 legacy entry 多出该字段。
+    expect(provider.stored).toEqual([
+      [{ ...entry, metadata: { ...entry.metadata, semanticType: "profile" } }],
+    ]);
   });
 
   test("queries provider with legacy options and returns core records with scores", async () => {

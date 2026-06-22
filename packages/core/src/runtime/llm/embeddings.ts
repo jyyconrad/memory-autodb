@@ -101,6 +101,11 @@ export class Embeddings {
     this.limit = pLimit(concurrency);
   }
 
+  /** 模型名（用于 eval trace manifest 记录）。 */
+  get modelName(): string {
+    return this.model;
+  }
+
   /**
    * 验证 embedding 配置
    * 提供友好的错误提示，帮助用户快速定位配置问题

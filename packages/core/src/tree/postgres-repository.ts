@@ -298,6 +298,21 @@ export class PostgresTreeRepository implements TreeRepository {
     return rows.map((row) => this.rowToSummary(row));
   }
 
+  async getParent(nodeId: string): Promise<TreeSummaryNode | undefined> {
+    await this.initialize();
+    const { rows } = await this.pool.query(
+      "SELECT * FROM summary_nodes WHERE child_node_ids @> ARRAY[$1]::text[]",
+      [nodeId],
+    );
+    if (rows.length === 0) {
+      return undefined;
+    }
+    if (rows.length > 1) {
+      console.warn(`[PostgresTreeRepository] getParent: multiple parents found for node ${nodeId}, returning first`);
+    }
+    return this.rowToSummary(rows[0]);
+  }
+
   private async createSchema(): Promise<void> {
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS tree_leaves (

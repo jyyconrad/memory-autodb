@@ -91,4 +91,5 @@ export interface TreeRepository {
   upsertSummary(node: TreeSummaryNode): Promise<void>;
   getSummary(id: string): Promise<TreeSummaryNode | undefined>;
   listSummaries(filter: { scope: MemoryScope; treeType?: MemoryTreeType; treeKey?: string }): Promise<TreeSummaryNode[]>;
+  getParent(nodeId: string): Promise<TreeSummaryNode | undefined>;
 }
