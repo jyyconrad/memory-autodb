@@ -13,7 +13,7 @@ import {
 import type { MemoryRecord } from "../../../../core/types.js";
 
 describe("kindToSemanticType", () => {
-  describe("v0.1 高置信度映射", () => {
+  describe("v1.1 高置信度映射", () => {
     it("goal → task_context", () => {
       const result = kindToSemanticType("goal");
       expect(result.semanticType).toBe("task_context");
@@ -31,25 +31,29 @@ describe("kindToSemanticType", () => {
       expect(result.semanticType).toBe("resource");
       expect(result.confidence).toBe("high");
     });
-  });
 
-  describe("v0.1 暂不映射", () => {
-    it("preference → null (medium confidence)", () => {
+    it("preference → profile", () => {
       const result = kindToSemanticType("preference");
-      expect(result.semanticType).toBeNull();
-      expect(result.confidence).toBe("medium");
+      expect(result.semanticType).toBe("profile");
+      expect(result.confidence).toBe("high");
     });
 
-    it("decision → null (medium confidence)", () => {
+    it("decision → rules", () => {
       const result = kindToSemanticType("decision");
-      expect(result.semanticType).toBeNull();
-      expect(result.confidence).toBe("medium");
+      expect(result.semanticType).toBe("rules");
+      expect(result.confidence).toBe("high");
     });
 
-    it("task → null (medium confidence)", () => {
+    it("task → task_context", () => {
       const result = kindToSemanticType("task");
-      expect(result.semanticType).toBeNull();
-      expect(result.confidence).toBe("medium");
+      expect(result.semanticType).toBe("task_context");
+      expect(result.confidence).toBe("high");
+    });
+
+    it("plan → task_context", () => {
+      const result = kindToSemanticType("plan");
+      expect(result.semanticType).toBe("task_context");
+      expect(result.confidence).toBe("high");
     });
   });
 
@@ -85,14 +89,18 @@ describe("batchMapSemanticType", () => {
     const records: Partial<MemoryRecord>[] = [
       { id: "1", kind: "goal" },
       { id: "2", kind: "document" },
-      { id: "3", kind: "fact" },
+      { id: "3", kind: "preference" },
+      { id: "4", kind: "decision" },
+      { id: "5", kind: "fact" },
     ];
 
     const results = batchMapSemanticType(records as MemoryRecord[]);
 
     expect(results[0].semanticType).toBe("task_context");
     expect(results[1].semanticType).toBe("resource");
-    expect(results[2].semanticType).toBeUndefined();
+    expect(results[2].semanticType).toBe("profile");
+    expect(results[3].semanticType).toBe("rules");
+    expect(results[4].semanticType).toBeUndefined();
   });
 
   it("保留原 kind 字段", () => {
@@ -110,20 +118,24 @@ describe("batchMapSemanticType", () => {
 describe("computeMappingCoverage", () => {
   it("计算映射覆盖率", () => {
     const records: Partial<MemoryRecord>[] = [
-      { id: "1", kind: "goal" },      // mapped
-      { id: "2", kind: "document" },  // mapped
-      { id: "3", kind: "knowledge" }, // mapped
-      { id: "4", kind: "fact" },      // unmapped
-      { id: "5", kind: "observation" }, // unmapped
+      { id: "1", kind: "goal" },         // mapped
+      { id: "2", kind: "document" },     // mapped
+      { id: "3", kind: "knowledge" },    // mapped
+      { id: "4", kind: "preference" },   // mapped
+      { id: "5", kind: "decision" },     // mapped
+      { id: "6", kind: "task" },         // mapped
+      { id: "7", kind: "plan" },         // mapped
+      { id: "8", kind: "fact" },         // unmapped
+      { id: "9", kind: "observation" },  // unmapped
     ];
 
     const coverage = computeMappingCoverage(records as MemoryRecord[]);
 
-    expect(coverage.total).toBe(5);
-    expect(coverage.mapped).toBe(3);
+    expect(coverage.total).toBe(9);
+    expect(coverage.mapped).toBe(7);
     expect(coverage.unmapped).toBe(2);
-    expect(coverage.coverageRate).toBe(0.6); // 60%
-    expect(coverage.byConfidence.high).toBe(3);
+    expect(coverage.coverageRate).toBeCloseTo(0.778, 2); // ~77.8%
+    expect(coverage.byConfidence.high).toBe(7);
     expect(coverage.byConfidence.unmappable).toBe(2);
   });
 

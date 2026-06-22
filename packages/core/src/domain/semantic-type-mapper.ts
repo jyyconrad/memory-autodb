@@ -30,12 +30,16 @@ export interface MappingResult {
 }
 
 /**
- * kind → semanticType 映射（v0.1 简化版）
+ * kind → semanticType 映射（v1.1 补全版）
  *
- * v0.1 只映射高置信度的 3 个 kind：
+ * v1.1 映射扩展：
  * - goal → task_context
  * - document → resource
  * - knowledge → resource
+ * - preference → profile (新增)
+ * - decision → rules (新增，技术决策通常是约束)
+ * - task → task_context (新增)
+ * - plan → task_context (新增)
  *
  * 其他 kind 返回 null，保留为 kind-only 记忆。
  */
@@ -43,8 +47,8 @@ export function kindToSemanticType(
   kind: MemoryKind,
   record?: MemoryRecord
 ): MappingResult {
-  // v0.1: 只映射高置信度的 3 个 kind
   switch (kind) {
+    // 高置信度映射
     case "goal":
       return {
         semanticType: "task_context",
@@ -66,15 +70,32 @@ export function kindToSemanticType(
         reason: "知识库条目是可用资源，符合 Q5",
       };
 
-    // v0.1: 以下 kind 暂不映射，延迟到 v0.2
     case "preference":
+      return {
+        semanticType: "profile",
+        confidence: "high",
+        reason: "偏好是用户画像的核心，符合 Q1（为谁工作）",
+      };
+
     case "decision":
+      return {
+        semanticType: "rules",
+        confidence: "high",
+        reason: "技术决策通常转化为开发约束，符合 Q3（不能做什么）",
+      };
+
     case "task":
+      return {
+        semanticType: "task_context",
+        confidence: "high",
+        reason: "任务是当前执行的工作内容，符合 Q2（我在做什么）",
+      };
+
     case "plan":
       return {
-        semanticType: null,
-        confidence: "medium",
-        reason: `kind=${kind} 需要上下文判断，v0.1 暂不映射`,
+        semanticType: "task_context",
+        confidence: "high",
+        reason: "计划是待执行的任务序列，符合 Q2（我在做什么）",
       };
 
     // 无法归类的 kind

@@ -7,8 +7,62 @@
 
 import type { MemoryCategory } from "../../../../config.js";
 import type { MemoryEntry, TableName } from "../db/types.js";
-import type { MemoryKind, MemoryRecord, MemoryScopeInput, RecordProvenance } from "../../../../core/types.js";
+import type { MemoryKind, MemoryRecord, MemoryScopeInput, MemorySemanticType, RecordProvenance } from "../../../../core/types.js";
 import { normalizeScope } from "../../../../core/scope.js";
+import { kindToSemanticType } from "./semantic-type-mapper.js";
+
+const MEMORY_SEMANTIC_TYPES: readonly MemorySemanticType[] = [
+  "profile",
+  "task_context",
+  "rules",
+  "experience",
+  "resource",
+];
+
+function isMemorySemanticType(value: unknown): value is MemorySemanticType {
+  return typeof value === "string" && (MEMORY_SEMANTIC_TYPES as readonly string[]).includes(value);
+}
+
+/**
+ * 把 legacy importance 强制规整为合法 number ∈ [0,1]。
+ *
+ * 迁移数据的 importance 可能以字符串（如 "0.9"）形式存储，违反 MemoryRecord.importance: number
+ * 契约，导致下游 clamp01/排序依赖隐式类型转换。这里在边界处一次性收口：
+ * - number：直接 clamp 到 [0,1]
+ * - 可解析字符串："0.9" -> 0.9
+ * - 非法/缺失：回退中性默认 0.5（与评分层缺省一致）
+ */
+function coerceImportance(value: unknown): number {
+  const num = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  if (!Number.isFinite(num)) return 0.5;
+  if (num < 0) return 0;
+  if (num > 1) return 1;
+  return num;
+}
+
+/**
+ * 解析记录的 semanticType（5 type 协议）。
+ *
+ * 迁移数据普遍缺少 metadata.semanticType，但带有 kind/category。为了让 5 槽位注入、
+ * importance 4 项明细、召回排序等所有消费方都能拿到 semanticType（而不是只有
+ * SlotContextBuilder 内部临时 enrich），在边界处统一推导：
+ * 1. 优先用 metadata.semanticType（显式写入，最权威）
+ * 2. 回退到 kind -> semanticType 的高置信度确定性映射
+ * 3. 仍无法归类则保持 undefined（kind-only 记忆，靠 lookup 检索）
+ */
+function resolveSemanticType(
+  metadata: MemoryEntry["metadata"],
+  kind: MemoryKind,
+): MemorySemanticType | undefined {
+  if (isMemorySemanticType(metadata.semanticType)) {
+    return metadata.semanticType;
+  }
+  const mapping = kindToSemanticType(kind);
+  if (mapping.semanticType && mapping.confidence === "high") {
+    return mapping.semanticType;
+  }
+  return undefined;
+}
 
 export function tableNameToNamespace(tableName?: TableName): string {
   return tableName ?? "memories";
@@ -64,13 +118,15 @@ export function memoryEntryToRecord(entry: MemoryEntry, defaults: MemoryScopeInp
     namespace: tableNameToNamespace(entry.tableName),
   });
 
+  const recordKind = inferKind(entry);
+
   return {
     id: entry.id,
     scope,
-    kind: inferKind(entry),
+    kind: recordKind,
     text: entry.text,
     contentHash: entry.contentHash,
-    importance: entry.importance,
+    importance: coerceImportance(entry.importance),
     category: entry.category,
     dataType: entry.dataType,
     tableName: entry.tableName,
@@ -78,6 +134,12 @@ export function memoryEntryToRecord(entry: MemoryEntry, defaults: MemoryScopeInp
     provenance: buildProvenance(entry),
     createdAt: entry.createdAt,
     updatedAt: typeof metadata.updatedAt === "number" ? metadata.updatedAt : undefined,
+    hotness: typeof metadata.hotness === "number" ? metadata.hotness : undefined,
+    sourceNodeIds: Array.isArray(metadata.sourceNodeIds)
+      ? (metadata.sourceNodeIds.filter((id): id is string => typeof id === "string"))
+      : undefined,
+    confidence: typeof metadata.confidence === "number" ? metadata.confidence : undefined,
+    semanticType: resolveSemanticType(metadata, recordKind),
     vector: [...entry.vector],
   };
 }
@@ -92,7 +154,14 @@ export function recordToMemoryEntry(record: MemoryRecord, vector?: number[]): Me
     category: record.category,
     dataType: record.dataType,
     tableName: record.tableName,
-    metadata: { ...record.metadata },
+    metadata: {
+      ...record.metadata,
+      ...(record.hotness !== undefined && { hotness: record.hotness }),
+      ...(record.sourceNodeIds && { sourceNodeIds: record.sourceNodeIds }),
+      ...(record.confidence !== undefined && { confidence: record.confidence }),
+      ...(record.semanticType && { semanticType: record.semanticType }),
+      ...(record.updatedAt !== undefined && { updatedAt: record.updatedAt }),
+    },
     createdAt: record.createdAt,
   };
 }
