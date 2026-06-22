@@ -20,6 +20,7 @@ import { registerProjectCliCommands } from "../../../../adapters/openclaw/cli-pr
 import { registerRecallCliCommands } from "../../../../adapters/openclaw/cli-recall.js";
 import { runInteractiveSetup } from "../../../../adapters/openclaw/cli-setup.js";
 import { registerWhyCliCommands } from "../../../../adapters/openclaw/cli-why.js";
+import { registerEvalCliCommands } from "./eval.js";
 
 const LEGACY_ENV_PATH = path.join(resolveLegacyHomeDir(), ".env");
 const CLI_VERSION = "2026.3.9";
@@ -188,6 +189,8 @@ export async function runMengshuCli(argv: string[] = process.argv): Promise<void
   registerProjectCliCommands(program, {
     service: runtime.memoryService,
     getRecordCount: () => runtime.db.count(),
+    embeddings: runtime.embeddings,
+    llmClient: runtime.llmClient,
   });
 
   registerWhyCliCommands(program, {
@@ -207,6 +210,8 @@ export async function runMengshuCli(argv: string[] = process.argv): Promise<void
   });
 
   registerMigrateHomeCommand(program);
+
+  registerEvalCliCommands(program);
 
   program
     .command("stats")
