@@ -157,7 +157,7 @@ export interface SourceMappingRow {
   action: ProjectMatchAction;
 }
 
-/** dry-run 完整报告（方案 §10.2）。 */
+/** dry-run 完整报告（方案 §10.2，OpenClaw 评估计划扩展）。 */
 export interface DryRunReport {
   /** dry-run 锚定的当前 projectId（如有显式归属）。 */
   projectId?: string;
@@ -178,6 +178,20 @@ export interface DryRunReport {
   remoteProviderWarning?: string;
   /** 文件级解析错误（不中断整批，仅汇报）。 */
   parseErrors: Array<{ sourcePath: string; error: string }>;
+
+  // ===== OpenClaw 评估计划扩展字段（阶段 0） =====
+  /** 脱敏规则版本（REDACTION_MAP_VERSION）。 */
+  redactionMapVersion?: string;
+  /** 15 类 PII 脱敏覆盖率统计（阶段 1 评估计划要求）。 */
+  redactionCoverage?: Record<string, number>;
+  /** 风险标记（如敏感内容、prompt 注入、密钥泄漏）。 */
+  riskFlags?: Array<{ type: string; count: number; sample?: string }>;
+  /** 标识符治理标记（room_id / thread_id / session_id 在正文/树中的出现）。 */
+  identifierFlags?: Array<{ pattern: string; hits: number; context: string }>;
+  /** 候选关系预估（belongs_to / supersedes / updates / precedes / conflicts_with）。 */
+  candidateRelations?: Record<string, number>;
+  /** 候选 claim 类型预估（fact / inference / advice / requirement）。 */
+  candidateClaimTypes?: Record<string, number>;
 }
 
 /** 候选语义类型（对齐 5 slot，方案 §6.2）。 */

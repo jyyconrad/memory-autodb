@@ -60,7 +60,26 @@ const RULES: Array<{
   baseConfidence: number;
   reason: string;
   guards?: (text: string) => boolean;
+  priority?: number; // 优先级，数字越大越优先匹配
 }> = [
+  {
+    semanticType: "experience",
+    patterns: [
+      /我们.+(选择|决定|采用).+(因为|是因为|由于)/,
+      /决策|decided.+because|chose.+because/i,
+      /经验|lesson learned|后来发现/,
+      /(上次|之前|曾|原来).+(导致|失败|问题).+(现在|后来|改用)/,
+      /(tried|attempted).+(failed|didn't work).+(switched|changed to)/i,
+      /发现.*(导致|引起|造成).*(无限循环|内存泄漏|性能问题|崩溃)/,
+      /(尝试|试过).*(方案|办法).*(但|可是).*(问题|失败)/,
+      /(之前|曾).+(超时|失败|问题).+(改用|后来|现在)/,
+      /\b(before|previously).+(timeout|failed|issue).+(changed|switched|now use)/i,
+    ],
+    baseConfidence: 0.78,
+    reason: "决策/经验",
+    priority: 10, // 高优先级，优先于 resource 匹配
+    guards: (text) => /因为|because|why|due to|导致|failed|switched|改用|后来|问题|超时|timeout|issue|changed/i.test(text),
+  },
   {
     semanticType: "rules",
     patterns: [
@@ -70,6 +89,7 @@ const RULES: Array<{
     ],
     baseConfidence: 0.85,
     reason: "禁止/约束类语句",
+    priority: 8,
   },
   {
     semanticType: "profile",
@@ -90,17 +110,6 @@ const RULES: Array<{
     ],
     baseConfidence: 0.75,
     reason: "项目/任务上下文",
-  },
-  {
-    semanticType: "experience",
-    patterns: [
-      /我们.+(选择|决定|采用).+(因为|是因为|由于)/,
-      /决策|decided.+because|chose.+because/i,
-      /经验|lesson learned|后来发现/,
-    ],
-    baseConfidence: 0.78,
-    reason: "决策/经验",
-    guards: (text) => /因为|because|why|due to/i.test(text),
   },
   {
     semanticType: "resource",
@@ -132,7 +141,10 @@ export class HeuristicTypeExtractor implements TypeExtractor {
     const results: ExtractedCandidate[] = [];
     const explicit = input.hints?.explicitSave;
 
-    for (const rule of RULES) {
+    // 按优先级排序（高优先级规则先匹配）
+    const sortedRules = [...RULES].sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
+    for (const rule of sortedRules) {
       if (rule.guards && !rule.guards(text)) continue;
       const hit = rule.patterns.some((p) => p.test(text));
       if (!hit) continue;
@@ -163,6 +175,9 @@ export class HeuristicTypeExtractor implements TypeExtractor {
         hasOutcome,
         metadata: input.context ?? {},
       });
+
+      // 匹配到高优先级规则后立即返回，不再尝试其他规则
+      if (rule.priority && rule.priority >= 8) break;
     }
 
     if (results.length === 0 && explicit) {

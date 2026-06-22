@@ -12,7 +12,7 @@ import type {
   SourceAdapterContext,
   SourceFileParseResult,
 } from "../agent-history/types.js";
-import { redactSecrets } from "../agent-history/redaction.js";
+import { redactSecrets, redactHomePath } from "../agent-history/redaction.js";
 
 export interface JsonlSourceOptions {
   provider: AgentHistoryProvider;
@@ -105,11 +105,11 @@ export async function parseJsonlFile(
         asString(value.thread_id) ??
         asString(value.conversationId) ??
         asString(value.conversation_id);
-      const cwd = asString(value.cwd) ?? asString(value.workdir) ?? asString(value.workingDirectory);
-      const projectRootHint = asString(value.projectRoot) ??
+      const cwd = redactHomePath(asString(value.cwd) ?? asString(value.workdir) ?? asString(value.workingDirectory));
+      const projectRootHint = redactHomePath(asString(value.projectRoot) ??
         asString(value.project_root) ??
         asString(value.workspacePath) ??
-        options.projectHintFromPath?.(filePath);
+        options.projectHintFromPath?.(filePath));
       const metadata = {
         parserVersion: options.parserVersion,
         lineNo,
@@ -122,7 +122,7 @@ export async function parseJsonlFile(
         id: `${options.provider}:${sourceHash.slice(0, 16)}:${lineNo}:${sha256(redacted.text).slice(0, 12)}`,
         provider: options.provider,
         sourceKind: options.sourceKind ?? "session",
-        sourcePath: filePath,
+        sourcePath: redactHomePath(filePath),
         sourceHash,
         sessionId,
         threadId,

@@ -181,8 +181,12 @@ const CONCRETE_MARKERS: readonly RegExp[] = [
   /\.[A-Za-z]{1,6}\b/,
 ];
 
-/** normalize：小写化并去除所有空白，供 fuzzyContains 比对（§3.1 闸门 2）。 */
-const normalize = (s: string): string => s.toLowerCase().replace(/\s+/g, "");
+/**
+ * normalize：NFKC 归一化 + 小写化并去除所有空白，供 fuzzyContains 比对（§3.1 闸门 2）。
+ * 评估计划 §normalizedQuoteHash 要求 NFKC 归一化以消除 Unicode 等价变体差异。
+ */
+export const normalize = (s: string): string =>
+  s.normalize("NFKC").toLowerCase().replace(/\s+/g, "");
 
 /** 生成 char-bigram 集合（长度 < 2 时返回空集，由调用方退化到子串判定）。 */
 const charBigrams = (s: string): Set<string> => {
