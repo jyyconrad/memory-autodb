@@ -27,6 +27,7 @@
 | **`ms recall --explain`** | **召回并显示 importance 4 项 breakdown + filteredReason（v1.0.2 P1）** |
 | **`ms forget <id>`** | **撤回/归档/纠错/回滚合并记忆（v1.0.2 P1）** |
 | **`ms project ingest-history --dry-run`** | **预览 Codex / Claude Code / OpenClaw agent history 导入（只读，不写库）** |
+| **`ms project ingest-history --apply`** | **对采样历史执行真实抽取 + 校验 + 召回链路并落盘验证产物（不写入生产记忆库）** |
 
 ## `ms project ingest-history`
 
@@ -36,7 +37,24 @@ ms project ingest-history --from codex,claude-code --since 90d --dry-run
 ms project ingest-history --from openclaw --source-root /path/to/history --dry-run
 ```
 
-当前阶段只支持 `--dry-run`：扫描来源文件、解析 canonical events、统计 session / chunk 预估、脱敏命中和坏行，不调用 embedding，也不写入 MemoryService。`--apply` 会明确提示尚未支持。
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `--from <providers>` | 否 | 逗号分隔的来源：`codex`、`claude-code`、`openclaw`，默认 `codex` |
+| `--since <window>` | 否 | 只包含该时间窗之后的事件，如 `30d`、`12h` |
+| `--source-root <path>` | 否 | 覆盖所选来源的根路径 |
+| `--max-files <n>` | 否 | 每个来源最多扫描的文件数 |
+| `--dry-run` | 否 | 预览模式（默认开启） |
+| `--apply` | 否 | 对采样历史执行真实抽取 + 校验 + 召回链路，并落盘验证产物 |
+
+### `--dry-run`（默认）
+
+扫描来源文件、解析 canonical events、统计 session / chunk 预估、脱敏命中和坏行，不调用 embedding，也不写入 MemoryService。
+
+### `--apply`
+
+对采样到的历史文本执行真实链路：LLM 抽取候选 → validator 校验 → 召回与上下文构建，并把每一阶段的过程产物（manifest、候选、校验决策、召回排序、问答与分析）落盘到 `~/.mengshu/eval-corpus/` 下的验证目录，便于回放与复盘。
+
+注意：`--apply` 用于验证导入链路质量，不会把记忆写入你的生产记忆库。
 
 ## `ms stats`
 

@@ -98,12 +98,12 @@ ON knowledge (created_at DESC);
 
 ## Supabase RPC
 
-Supabase provider 使用 `match_memories` 和 `match_knowledge` 做向量搜索。仓库根目录保留两份脚本：
+Supabase provider 使用 `match_memories` 和 `match_knowledge` 做向量搜索。仓库 `scripts/sql/` 下保留两份脚本：
 
 | 脚本 | 说明 |
 |------|------|
-| [supabase-rpc-functions.sql](../../supabase-rpc-functions.sql) | 1536 维默认脚本 |
-| [supabase-rpc-functions-1024.sql](../../supabase-rpc-functions-1024.sql) | 1024 维模型脚本 |
+| [supabase-rpc-functions.sql](../../scripts/sql/supabase-rpc-functions.sql) | 1536 维默认脚本 |
+| [supabase-rpc-functions-1024.sql](../../scripts/sql/supabase-rpc-functions-1024.sql) | 1024 维模型脚本 |
 
 维度必须和 embedding 模型一致。
 

@@ -147,8 +147,6 @@ npm run eval:quick
 ms doctor
 ```
 
-稳定回归命令见 [测试文档](../07-test/plugin-test.md)。
-
 ## 技术栈演进历史
 
 - **v1.0.0 (2025-12)**：初始版本，LanceDB + OpenAI

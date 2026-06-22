@@ -24,9 +24,6 @@
 - [CLI 命令](api/cli-commands.md) - ms 命令组完整参考
 - [Memory API](api/memory-api.md) - REST API 接口规范
 
-### 测试与评测
-- [OpenClaw 历史数据评测集方案](07-test/openclaw-history-eval-plan.md) - 用真实 OpenClaw 历史验证提取、召回、上下文注入和记忆树能力
-
 ## 用户指南
 
 - [配置说明](guides/configuration.md) - 配置文件详解
