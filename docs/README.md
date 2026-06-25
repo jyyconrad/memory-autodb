@@ -12,8 +12,6 @@
 ### 架构设计
 - [系统架构](architecture/system-architecture.md) - 整体架构设计
 - [技术栈](architecture/technology-stack.md) - 技术选型说明
-- [项目目录层级与包结构重构方案](architecture/project-structure-refactor-plan.md) - core/plugins/mcp/api/ui/tests 分层与迁移路线
-- [多产品插件化实施方案](architecture/plugin-packaging-implementation-plan.md) - plugins/ 目录、OpenClaw/Codex 插件包与迁移路线
 
 ### 核心设计
 - [记忆系统统一设计](design/memory-system-unified-design.md) - 算法层单一事实来源
@@ -35,7 +33,3 @@
 - 当前版本：v1.0.4
 - 开源协议：MIT
 - 仓库地址：[GitHub](https://github.com/your-org/mengshu)
-
----
-
-**内部开发文档**见 `.memory-docs/original-docs/`，包含完整的设计过程、测试用例、缺陷记录等。
