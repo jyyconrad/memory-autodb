@@ -1,0 +1,13 @@
+{
+  "name": "@mengshu/plugin-openclaw",
+  "version": "1.0.4",
+  "private": true,
+  "type": "module",
+  "description": "OpenClaw memory slot plugin for mengshu",
+  "main": "./src/index.ts",
+  "openclaw": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  }
+}

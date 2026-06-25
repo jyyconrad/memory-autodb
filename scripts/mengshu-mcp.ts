@@ -16,9 +16,7 @@ import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { AgentFastPathService } from "../api/agent-fast-path.js";
 import { memoryConfigSchema, type MemoryCategory, type MemoryConfig } from "../config.js";
-import { DefaultMemoryService } from "../core/memory-service.js";
 import {
   expandHome,
   resolveConfigPath,
@@ -28,12 +26,10 @@ import {
 import type { MemoryService, StoreMemoryInput } from "../core/service-types.js";
 import { normalizeScope } from "../core/scope.js";
 import type { MemoryKind, MemoryRecord, MemoryScope, MemorySemanticType } from "../core/types.js";
-import { DatabaseFactory } from "../db/factory.js";
 import { Embeddings } from "../processing/embeddings.js";
 import { computeContentHash } from "../processing/hash-utils.js";
-import { LegacyDatabaseAdapter } from "../storage/legacy-database-adapter.js";
-import { startMcpStdioServer } from "../adapters/mcp/stdio-server.js";
-import { extractRecords } from "../adapters/openclaw/agent-service-helper.js";
+import { startMcpStdioServer } from "../packages/mcp/src/stdio-server.js";
+import { createMengshuRuntime } from "../runtime.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,6 +40,7 @@ const LEGACY_MCP_CONFIG_PATH = path.join(resolveLegacyHomeDir(), "mengshu-mcp.js
 const DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH = path.join(resolveLegacyHomeDir(), "conf", "plugins.json");
 /** 旧版 .env（仅用于兼容回退）。 */
 const LEGACY_ENV_PATH = path.join(resolveLegacyHomeDir(), ".env");
+const OPENCLAW_PLUGIN_CONFIG_KEYS = ["mengshu-openclaw", "memory-autodb", "mengshu"] as const;
 
 function resolveMaybeRelative(input: string, baseDir: string): string {
   const expanded = expandHome(input);
@@ -113,18 +110,25 @@ function readConfig(configPath: string): unknown {
     return readJson(LEGACY_MCP_CONFIG_PATH);
   }
 
-  // 兼容回退 2：~/.openclaw/conf/plugins.json 中的 mengshu 条目
+  // 兼容回退 2：~/.openclaw/conf/plugins.json 中的 OpenClaw 插件配置
   if (fs.existsSync(DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH)) {
     const plugins = readJson(DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH) as {
       entries?: Record<string, { enabled?: boolean; config?: unknown }>;
     };
-    const entry = plugins.entries?.["mengshu"];
-    if (!entry?.enabled || !entry.config) {
-      throw new Error(
-        `mengshu plugin config is disabled or missing: ${DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH}`,
-      );
+    for (const key of OPENCLAW_PLUGIN_CONFIG_KEYS) {
+      const entry = plugins.entries?.[key];
+      if (entry?.enabled && entry.config) {
+        if (key !== "mengshu-openclaw") {
+          process.stderr.write(
+            `[mengshu] 检测到旧 OpenClaw 插件配置 ${key}，建议运行 ms migrate-openclaw-plugin-id\n`,
+          );
+        }
+        return entry.config;
+      }
     }
-    return entry.config;
+    throw new Error(
+      `mengshu plugin config is disabled or missing: ${DEFAULT_OPENCLAW_PLUGIN_CONFIG_PATH}`,
+    );
   }
 
   throw new Error(
@@ -133,6 +137,9 @@ function readConfig(configPath: string): unknown {
 }
 
 function resolveDbPath(cfg: MemoryConfig, configPath: string): string {
+  if (cfg.dbType === "postgres" || cfg.dbType === "supabase") {
+    return "";
+  }
   const dbPath = cfg.dbPath ?? "~/.mengshu/memory/lancedb";
   const configDir = path.dirname(configPath);
   return resolveMaybeRelative(dbPath, configDir);
@@ -275,45 +282,6 @@ function createMcpFriendlyMemoryService(
   };
 }
 
-function observationToRecord(input: {
-  scope: MemoryScope;
-  text: string;
-  metadata: Record<string, unknown>;
-}): MemoryRecord {
-  const now = Date.now();
-  const eventType = typeof input.metadata.eventType === "string" ? input.metadata.eventType : "observation";
-  const traceId = typeof input.metadata.traceId === "string" ? input.metadata.traceId : undefined;
-
-  return {
-    id: traceId && isUuid(traceId) ? traceId : randomUUID(),
-    scope: input.scope,
-    kind: "observation",
-    semanticType: "task_context",
-    container: "session_candidate",
-    lifecycleStatus: "active",
-    confidence: input.metadata.intent === "remember" ? 0.9 : 0.6,
-    text: input.text,
-    contentHash: computeContentHash(input.text),
-    importance: input.metadata.intent === "remember" ? 0.8 : 0.4,
-    category: "core",
-    dataType: "memory",
-    tableName: "memories",
-    metadata: {
-      ...input.metadata,
-      source: "mcp",
-      eventType,
-      updatedAt: now,
-    },
-    provenance: {
-      source: "mcp",
-      sessionId: input.scope.sessionId,
-      createdAt: now,
-    },
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
 async function main(): Promise<void> {
   process.chdir(path.resolve(__dirname, ".."));
 
@@ -337,11 +305,6 @@ async function main(): Promise<void> {
   const configPath = explicitConfig ? expandHome(explicitConfig) : resolveConfigPath();
   const rawConfig = readConfig(configPath);
   const cfg = memoryConfigSchema.parse(rawConfig);
-  const db = DatabaseFactory.createProvider(cfg, resolveDbPath(cfg, configPath));
-  const embeddings = new Embeddings(cfg.embedding, cfg.batchProcessing);
-  const repository = new LegacyDatabaseAdapter(db, { appId: "mengshu" });
-  const durableService = new DefaultMemoryService({ repository, embeddings });
-
   const defaultScope: MemoryScope = {
     tenantId: "local",
     appId: "mengshu",
@@ -351,49 +314,30 @@ async function main(): Promise<void> {
     namespace: "working-context",
     visibility: "private",
   };
-  const service = createMcpFriendlyMemoryService(durableService, {
-    embeddings,
+  const runtime = createMengshuRuntime({
+    config: cfg,
+    resolvedDbPath: resolveDbPath(cfg, configPath),
+    appId: "mengshu",
     defaultScope,
-    embeddingModel: cfg.embedding.model,
-  });
-
-  const agentFastPath = new AgentFastPathService({
-    defaultScope,
-    loadRecordsForScope: async (scope) => {
-      const result = await service.recall({
-        query: "",
-        scope,
-        limit: 50,
-        minScore: 0,
-        searchAll: true,
-      });
-      return extractRecords(result.hits);
-    },
-    recall: async (scope, query, opts) =>
-      service.recall({
-        query,
-        scope,
-        limit: opts?.limit ?? 10,
-        minScore: opts?.minScore ?? 0.1,
-        searchAll: true,
-      }),
-    storeObservation: async ({ scope, text, metadata }) => {
-      const resolvedScope = normalizeScope(scope, defaultScope);
-      const record = observationToRecord({ scope: resolvedScope, text, metadata });
-      await service.storeMemory({ record });
-      return { id: record.id };
-    },
-    enqueueJob: async ({ type }) => `standalone-${type}-${Date.now()}`,
     logger: {
       warn: (message) => process.stderr.write(`[mengshu] ${message}\n`),
     },
+  });
+  await runtime.start();
+
+  const service = createMcpFriendlyMemoryService(runtime.memoryService, {
+    embeddings: runtime.embeddings,
+    defaultScope,
+    embeddingModel: cfg.embedding.model,
   });
 
   process.stderr.write(`mengshu MCP started (${configPath})\n`);
   await startMcpStdioServer({
     service,
-    agentFastPath,
+    agentFastPath: runtime.agentFastPath,
     namespaces: ["memories", "knowledge"],
+    pipeline: runtime.ingestionPipeline,
+    llmClient: runtime.llmClient,
   });
 
   await new Promise<void>(() => {

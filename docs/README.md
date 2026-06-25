@@ -15,6 +15,7 @@
 
 ### 核心设计
 - [记忆系统统一设计](design/memory-system-unified-design.md) - 算法层单一事实来源
+- [记忆树批量推理方案](design/memory-tree-batch-inference-plan.md) - 记忆树摘要、faithfulness judge 和结论生成的异步 Batch LLM 方案
 - [数据库 Schema](design/schema.md) - 数据模型设计
 
 ### API 参考
@@ -29,10 +30,6 @@
 
 ## 项目信息
 
-- 当前版本：v1.0.2
+- 当前版本：v1.0.4
 - 开源协议：MIT
 - 仓库地址：[GitHub](https://github.com/your-org/mengshu)
-
----
-
-**内部开发文档**见 `.memory-docs/original-docs/`，包含完整的设计过程、测试用例、缺陷记录等。

@@ -1,0 +1,303 @@
+/**
+ * LLM 驱动的图谱提取，失败时 fallback 到规则提取。
+ */
+
+import { createHash } from "node:crypto";
+import { scopeToKey } from "../domain/scope.js";
+import type { MemoryScope } from "../domain/types.js";
+import type { LlmClient } from "../runtime/llm/llm-client.js";
+import { extractGraph } from "./extractor.js";
+import { validateExtraction } from "./extraction-validator.js";
+import type { RawLlmExtraction } from "./extraction-validator.js";
+import { ENTITY_TYPES, RELATION_PREDICATES } from "./schema.js";
+import type { EntityType, RelationPredicate } from "./schema.js";
+import type {
+  GraphEntityRecord,
+  GraphExtractionInput,
+  GraphExtractionResult,
+  GraphRelationRecord,
+} from "./types.js";
+
+export interface LlmExtractionInput extends GraphExtractionInput {
+  context?: {
+    projectName?: string;
+    userName?: string;
+    agentName?: string;
+  };
+}
+
+export interface LlmExtractorDeps {
+  llmClient: LlmClient;
+  /**
+   * 可选审计钩子：记录 LLM 提取失败（网络、schema 校验、超时等）。
+   * 当 LLM 抽取抛错时，会调用此钩子记录 llm_extraction_failed 事件。
+   */
+  audit?(input: {
+    scope: MemoryScope;
+    action: string;
+    targetId?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<void>;
+}
+
+/**
+ * 图谱抽取的结构化输出 schema（对齐 §2.4 调用 B：Graph Extractor）。
+ *
+ * D-08：顶层 `required: ["entities", "relations"]` 是 B1（extractStructured）
+ * 运行时校验依据——B1 仅校验顶层 required 字段是否存在于返回 JSON。
+ * 嵌套的 entity/relation required 字段与 §2.4 对齐，并作为 prompt 结构提示
+ * 一并序列化进调用层（min/max、additionalProperties 等约束为提示用途）。
+ *
+ * 注：实体类型 enum 直接取自 `ENTITY_TYPES`（code 为事实来源），相较 §2.4
+ * 正文文本多包含 `chunk` 一项；谓词 enum 取自 `RELATION_PREDICATES`，与
+ * §2.4 完全一致。两份 closed schema 列表与下方 system prompt 同源，避免漂移。
+ */
+export const EXTRACTION_SCHEMA = {
+  title: "GraphExtraction",
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    entities: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 200 },
+          type: { type: "string", enum: [...ENTITY_TYPES] },
+          description: { type: "string", maxLength: 200 },
+          aliases: { type: "array", items: { type: "string" } },
+        },
+        required: ["name", "type"],
+      },
+    },
+    relations: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          subject: { type: "string" },
+          predicate: { type: "string", enum: [...RELATION_PREDICATES] },
+          object: { type: "string" },
+          evidence: { type: "string", minLength: 1 },
+          confidence: { type: "number", minimum: 0, maximum: 1 },
+        },
+        required: ["subject", "predicate", "object", "evidence", "confidence"],
+      },
+    },
+  },
+  required: ["entities", "relations"],
+};
+
+/**
+ * 图谱抽取 system message（对齐 §2.4 调用 B 的 System message）。
+ *
+ * D-08：system 只放稳定规则——角色定义、closed schema 实体类型 / 关系谓词、
+ * evidence-bound 原则。不含任何动态上下文（projectName / 待抽取文本等），
+ * 动态部分一律进 role=user，保证 prompt 缓存稳定。
+ *
+ * 实体/关系类型列表从 `ENTITY_TYPES` / `RELATION_PREDICATES` 派生，与
+ * EXTRACTION_SCHEMA 同源，确保 prompt 与 schema 永不漂移。
+ */
+const ENTITY_TYPE_LIST = ENTITY_TYPES.join(", ");
+const PREDICATE_LIST = RELATION_PREDICATES.join(", ");
+
+export const GRAPH_EXTRACTION_SYSTEM_PROMPT = [
+  "你是 mengshu 知识图谱提取器，从工作记录中识别有指代价值的实体及其关系。",
+  "",
+  "实体类型（closed schema，仅以下值有效）：",
+  ENTITY_TYPE_LIST,
+  "",
+  "关系谓词（closed schema，仅以下值有效）：",
+  PREDICATE_LIST,
+  "",
+  "实体抽取规则（参考 LightRAG / GraphRAG 经验）：",
+  "- type 必须取自上面的实体类型列表，不得自创新类型。",
+  '- name 使用规范名（"PostgreSQL" 而非 "pg"）；description 用一句话说明该实体的指代。',
+  '- 忽略无指代价值的泛词（"代码"、"功能"、"东西"、"系统"）。',
+  "- 同一实体的别称收入 aliases，不要拆成多个实体。",
+  "",
+  "关系抽取规则：",
+  "- 每条关系输出 subject / predicate / object / evidence / confidence 五个字段。",
+  "- predicate 必须取自上面的关系谓词列表。",
+  "- subject 与 object 必须是你在 entities 中已声明过的实体名。",
+  "- evidence-bound：evidence 必须是输入文本中真实出现的子串，不得改写或外推；",
+  "  没有 evidence 的关系不要输出。",
+  "- confidence 取 0-1，反映该关系在文本中的确定程度。",
+  "- 不要为单次提及生成 mentions 关系，除非该实体本身具备分析价值。",
+  "",
+  "输出语言与原文一致（原文中文则中文）。",
+].join("\n");
+
+interface RawLlmEntity {
+  name: string;
+  type: string;
+  description?: string;
+  aliases?: string[];
+}
+
+interface RawLlmRelation {
+  subject: string;
+  predicate: string;
+  object: string;
+  confidence: number;
+  evidence: string;
+}
+
+interface RawLlmOutput {
+  entities: RawLlmEntity[];
+  relations: RawLlmRelation[];
+}
+
+function hashId(prefix: string, parts: string[]): string {
+  const digest = createHash("sha256").update(parts.join(":")).digest("hex").slice(0, 24);
+  return `${prefix}_${digest}`;
+}
+
+function normalizeName(name: string): string {
+  return name.trim().replace(/[\x00-\x1F]+/g, " ").replace(/\s+/g, " ").toLowerCase();
+}
+
+function buildEntity(
+  scope: MemoryScope,
+  type: EntityType,
+  displayName: string,
+  createdAt: number,
+  aliases: string[] = [],
+): GraphEntityRecord {
+  const canonicalName = normalizeName(displayName);
+  const scopeKey = scopeToKey(scope);
+  return {
+    id: hashId("ent", [scopeKey, type, canonicalName]),
+    scope,
+    canonicalName,
+    displayName,
+    type,
+    aliases: Array.from(new Set([displayName, ...aliases])),
+    mentionCount: 1,
+    mentionCount30d: 1,
+    distinctSourceCount: 0,
+    lastSeenAt: createdAt,
+    hotness: 0,
+    queryHits30d: 0,
+    status: "active",
+    createdAt,
+    updatedAt: createdAt,
+    metadata: {},
+  };
+}
+
+function buildRelation(
+  scope: MemoryScope,
+  subjectId: string,
+  predicate: RelationPredicate,
+  objectId: string,
+  chunkId: string,
+  createdAt: number,
+  confidence: number,
+): GraphRelationRecord {
+  const scopeKey = scopeToKey(scope);
+  return {
+    id: hashId("rel", [scopeKey, subjectId, predicate, objectId]),
+    scope,
+    subjectId,
+    predicate,
+    objectId,
+    confidence,
+    evidenceChunkIds: [chunkId],
+    evidenceCount: 1,
+    firstSeenAt: createdAt,
+    lastSeenAt: createdAt,
+    status: confidence < 0.5 ? "weak" : "active",
+    sourceKinds: ["llm"],
+    metadata: {},
+  };
+}
+
+export async function extractGraphWithLlm(
+  input: LlmExtractionInput,
+  deps: LlmExtractorDeps,
+): Promise<GraphExtractionResult> {
+  if (!deps.llmClient.available || input.text.length < 50) {
+    return extractGraph(input);
+  }
+
+  try {
+    // D-08 (§2.2/§2.4): 动态上下文（projectName/userName/agentName）一律进
+    // role=user，system message 只保留稳定规则，避免破坏 prompt 缓存。
+    const contextLines = input.context
+      ? Object.entries(input.context)
+          .filter(([, v]) => v != null)
+          .map(([k, v]) => `- ${k}: ${v}`)
+          .join("\n")
+      : "";
+
+    const userContent = [
+      contextLines ? `# 提取上下文\n${contextLines}` : "",
+      "# 待提取文本",
+      input.text,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const raw = await deps.llmClient.extractStructured<RawLlmOutput>(
+      [
+        { role: "system", content: GRAPH_EXTRACTION_SYSTEM_PROMPT },
+        { role: "user", content: userContent },
+      ],
+      EXTRACTION_SCHEMA,
+      { modelType: "extraction" }, // 使用抽取模型
+    );
+
+    // 铁律（§3.1 validator 裁决）：所有入图记录必须经 graph/extraction-validator.ts
+    // 的 validateExtraction 统一校验，不再走本文件的内联过滤（避免双轨：内联过滤
+    // 缺 evidence 长度上界、confidence>0 严格、description 校验等闸门）。
+    // validateExtraction 内部已做：实体 name 非空且 <=200、type 属于 closed schema；
+    // 关系 subject/object/evidence 非空、predicate 合法、0<confidence<=1、
+    // subject/object 必须是已声明实体。被拒项直接丢弃，不进图。
+    const validated = validateExtraction(raw as RawLlmExtraction, input.text);
+
+    const entities: GraphEntityRecord[] = validated.entities.map((e) =>
+      buildEntity(input.scope, e.type, e.name, input.createdAt, e.aliases),
+    );
+
+    const nameToId = new Map<string, string>(
+      entities.map((e) => [normalizeName(e.displayName), e.id]),
+    );
+
+    const relations: GraphRelationRecord[] = validated.relations.flatMap((r) => {
+      const subjectId = nameToId.get(normalizeName(r.subject));
+      const objectId = nameToId.get(normalizeName(r.object));
+      if (!subjectId || !objectId) return [];
+      return [
+        buildRelation(
+          input.scope,
+          subjectId,
+          r.predicate,
+          objectId,
+          input.chunkId,
+          input.createdAt,
+          r.confidence,
+        ),
+      ];
+    });
+
+    return { entities, relations };
+  } catch (err) {
+    // LLM 提取失败（网络错误、schema 校验失败、超时等）→ 记录审计日志并 fallback 到规则提取。
+    if (deps.audit) {
+      await deps.audit({
+        scope: input.scope,
+        action: "llm_extraction_failed",
+        targetId: input.chunkId,
+        metadata: {
+          textLength: input.text.length,
+          error: err instanceof Error ? err.message : String(err),
+          fallbackTo: "rule_based",
+        },
+      });
+    }
+    return extractGraph(input);
+  }
+}

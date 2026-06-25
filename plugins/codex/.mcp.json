@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mengshu": {
+      "cwd": ".",
+      "command": "node",
+      "args": ["./mcp/server.mjs"],
+      "env": {
+        "MENGSHU_HOME": "${MENGSHU_HOME}"
+      }
+    }
+  }
+}

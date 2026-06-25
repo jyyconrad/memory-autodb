@@ -72,7 +72,7 @@ function contentType(filePath: string): string {
 }
 
 const moduleDir = dirname(fileURLToPath(import.meta.url));
-const consoleRoot = normalize(join(moduleDir, "..", "console", "web"));
+const consoleRoot = normalize(join(moduleDir, "..", "packages", "ui", "src", "web"));
 
 async function serveConsoleAsset(pathname: string, response: http.ServerResponse): Promise<boolean> {
   if (pathname !== "/console" && !pathname.startsWith("/console/")) {

@@ -1,2 +1,1 @@
-export * from "./client.js";
-export * from "./types.js";
+export * from "../../packages/api/src/sdk/index.js";

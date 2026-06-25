@@ -631,6 +631,8 @@ export const memoryConfigSchema = {
       throw new Error("captureMaxChars must be between 100 and 10000");
     }
 
+    const dbType = (cfg.dbType === "supabase" ? "supabase" : cfg.dbType === "postgres" ? "postgres" : "lancedb");
+
     return {
       embedding: {
         provider: "openai",
@@ -663,8 +665,10 @@ export const memoryConfigSchema = {
         summaryTree: features?.summaryTree === true,
         webConsole: features?.webConsole === true,
       },
-      dbType: (cfg.dbType === "supabase" ? "supabase" : cfg.dbType === "postgres" ? "postgres" : "lancedb"),
-      dbPath: typeof cfg.dbPath === "string" ? cfg.dbPath : resolveDefaultDbPath(),
+      dbType,
+      dbPath: dbType === "lancedb"
+        ? (typeof cfg.dbPath === "string" ? cfg.dbPath : resolveDefaultDbPath())
+        : undefined,
       supabase: supabase ? {
         url: resolveEnvVars(String(supabase.url), "supabase.url"),
         serviceKey: resolveEnvVars(String(supabase.serviceKey), "supabase.serviceKey"),

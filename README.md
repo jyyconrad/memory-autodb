@@ -2,7 +2,22 @@
 
 > 面向多产品 Agent Runtime 的本地优先记忆中间件
 
-mengshu（梦枢）是一个智能记忆管理系统，主要服务于 OpenClaw 类型产品之间的工作记忆连续性。它让同一用户在不同 Agent 产品之间切换时，工作记忆、协作偏好、长期约束、历史经验和可用资源仍然持续存在。
+mengshu 用于在 OpenClaw、Codex、Claude Code、MCP 客户端、REST 服务和本地 CLI 之间共享长期工作记忆。它可以保存用户偏好、项目约束、架构决策、可复用经验和资源线索，并在后续任务中按需召回。
+
+当前版本：**v1.0.4**
+
+## 核心能力
+
+- **少重复交代背景**：把用户偏好、项目约束、架构决策和常用资源沉淀下来，新的 Agent 会话也能接上上下文。
+- **更快进入任务状态**：在开始编码、写文档或排查问题前，自动取回相关经验、规则和历史决策，减少来回确认。
+- **跨工具连续工作**：OpenClaw、Codex、Claude Code、MCP、REST、Web Console 和 CLI 可以共用同一套记忆库。
+- **降低重复踩坑**：把问题根因、修复经验和最佳实践变成可召回资产，下次遇到相似任务时直接复用。
+- **可追溯、可治理**：能解释记忆为什么被召回，也能撤回、归档、纠错或恢复不再适用的记忆。
+- **把记忆分门别类**：自动区分“用户是谁、正在做什么、必须遵守什么、以前怎么做过、有哪些资源”，让 Agent 知道每条记忆该怎么用。
+- **自动过滤无效记忆**：临时闲聊、低价值片段和风险内容不会轻易进入长期记忆，避免记忆库越用越脏。
+- **召回结果更可靠**：写入、排序、置信度和热度分别评分，避免只靠相似度把“看起来相关但不该用”的内容塞进上下文。
+- **跨项目不串场**：通用偏好和经验可以复用，具体任务状态和项目资源保持隔离。
+- **把经验沉淀成方法**：反复验证有效的做法会变成可复用经验，帮助 Agent 在相似任务中直接走成熟路径。
 
 ## 快速开始
 
@@ -12,82 +27,44 @@ mengshu（梦枢）是一个智能记忆管理系统，主要服务于 OpenClaw 
 npm install -g mengshu
 ```
 
-### 初始化配置
-
-运行交互式配置向导：
+### 初始化
 
 ```bash
 ms init
 ```
 
-这将引导你完成 LLM、Embedding 和数据库的配置。
+初始化向导会配置 LLM、Embedding 和数据库连接。已有 OpenClaw 环境时，可以通过 `~/.mengshu/config.json` 复用同一套 PostgreSQL 记忆库。
 
-### 基本使用
-
-```bash
-# 存储记忆
-ms store "用户偏好使用 TypeScript"
-
-# 召回记忆
-ms recall "编程语言偏好"
-
-# 查看记忆评分
-ms why <记忆ID>
-
-# 管理记忆
-ms forget <记忆ID>
-```
-
-完整指南见 [快速开始](docs/guides/getting-started.md)。
-
-## 核心特性
-
-- **智能记忆捕获**：LLM 结构化提取 + 11 闸门验证，自动分类为 profile/task_context/rules/experience/resource
-- **多模召回**：向量检索 + BM25 + RRF 融合，支持 6 档作用域（message/turn/session/project/app/global）
-- **上下文构建**：5 槽位任务上下文，自动组织为可注入的 prompt
-- **召回解释**：4 套评分体系（valueScore/importance/confidence/hotness）明细追溯
-- **记忆管理**：撤回/归档/纠错/回滚四种操作，审计可回溯
-- **语义去重**：entity 三级匹配（精确/别名/语义）+ embedding 相似度去重
-- **知识图谱**：entity/relation 自动抽取，图中心性计算
-- **记忆树**：L0-L3 折叠层（evidence → source → topic → global）
-- **技能聚合**：experience → skill_candidate 自动升格
-- **反馈闭环**：采纳率/停留/二次召回隐式信号反馈
-
-## CLI 命令
+### 健康检查
 
 ```bash
-# 记忆管理
-ms store "记忆内容"              # 存储记忆
-ms recall "查询"                # 召回记忆
-ms search "关键词"              # 搜索记忆
-ms why <记忆ID>                 # 查看评分明细
-ms forget <记忆ID>              # 管理记忆（撤回/归档/纠错）
-
-# 统计与诊断
-ms stats                       # 查看统计信息
-ms doctor                      # 健康检查
-ms tables                      # 查看表结构
-
-# 数据管理
-ms scan ./docs                 # 扫描目录
-ms project ingest-history --from codex --dry-run  # 预览 agent history 导入
-ms cleanup                     # 清理过期数据
-ms migrate-home               # 迁移旧配置
-
-# 服务
-ms serve                       # 启动 REST server + Web Console
-ms mcp                        # 启动 MCP Server
+ms doctor
 ```
 
-完整命令参考见 [CLI 命令文档](docs/api/cli-commands.md)。
+### 召回与管理
+
+```bash
+# 召回相关记忆
+ms recall "用户的沟通偏好"
+
+# 查看召回原因和评分明细
+ms why <memory-id>
+
+# 撤回、归档、纠错或恢复记忆
+ms forget <memory-id>
+```
+
+完整流程见 [快速开始](docs/guides/getting-started.md)。
 
 ## 集成方式
 
 ### OpenClaw 插件
 
 ```bash
-openclaw plugin add memory-autodb
+openclaw plugin add ./plugins/openclaw
 ```
+
+当前 OpenClaw 插件 id 为 `mengshu-openclaw`。
 
 ### MCP Server
 
@@ -95,142 +72,104 @@ openclaw plugin add memory-autodb
 ms mcp
 ```
 
-支持 Claude Desktop、Cline、Zed 等 MCP 客户端。
+MCP Server 暴露 `memory_recall`、`memory_lookup`、`memory_context_fast`、`memory_save`、`memory_observe_light`、`memory_forget` 等工具。
 
-### REST API
+### REST API 与 Web Console
 
 ```bash
 ms serve --port 3847
 ```
 
-API 文档见 [Memory API](docs/api/memory-api.md)。
+REST 接口见 [Memory API](docs/api/memory-api.md)。
 
-### 代码集成
+### CLI
 
-```typescript
-import { MemoryService } from 'mengshu';
-
-const memory = new MemoryService({
-  llm: {
-    apiKey: process.env.OPENAI_API_KEY,
-    extractionModel: 'gpt-4o-mini'
-  },
-  embedding: {
-    model: 'text-embedding-3-small'
-  },
-  dbType: 'lancedb'
-});
-
-await memory.initialize();
-await memory.store({ text: '用户偏好 TypeScript' });
-const result = await memory.recall({ query: '编程语言偏好' });
+```bash
+ms doctor
+ms recall "deployment notes" --explain
+ms project ingest-history --from codex --dry-run
+ms mcp
+ms serve
 ```
 
-详见 [集成指南](docs/guides/integration.md)。
+完整命令见 [CLI 命令](docs/api/cli-commands.md)。
 
 ## 配置
 
-mengshu 使用三层配置：
+mengshu 按三层加载配置：
 
 1. 全局配置：`~/.mengshu/config.json`
 2. 项目配置：`$PROJECT/.mengshu/config.json`
 3. 环境变量覆盖
 
-最小配置示例：
+示例：
 
 ```json
 {
   "embedding": {
     "apiKey": "${OPENAI_API_KEY}",
+    "baseURL": "https://api.openai.com/v1",
     "model": "text-embedding-3-small"
   },
   "llm": {
     "apiKey": "${OPENAI_API_KEY}",
-    "extractionModel": "gpt-4o-mini"
+    "baseURL": "https://api.openai.com/v1",
+    "extractionModel": "gpt-4o-mini",
+    "summarizationModel": "gpt-4o-mini",
+    "reasoningModel": "gpt-4o"
   },
-  "dbType": "lancedb",
-  "dbPath": "~/.mengshu/memory/lancedb"
+  "dbType": "postgres",
+  "postgres": {
+    "host": "${PG_HOST}",
+    "port": 5432,
+    "database": "${PG_DATABASE}",
+    "user": "${PG_USER}",
+    "password": "${PG_PASSWORD}",
+    "ssl": false
+  },
+  "autoCapture": true,
+  "autoRecall": true
 }
 ```
 
-完整配置说明见 [配置文档](docs/guides/configuration.md)。
+完整配置见 [配置说明](docs/guides/configuration.md)。
 
-## 文档
+## 文档导航
 
 | 文档 | 说明 |
 |------|------|
-| [快速开始](docs/guides/getting-started.md) | 安装、配置、基本使用 |
-| [配置说明](docs/guides/configuration.md) | 配置文件详解 |
-| [集成指南](docs/guides/integration.md) | OpenClaw/MCP/REST/SDK 集成 |
-| [最佳实践](docs/guides/best-practices.md) | 使用建议和优化 |
-| [CLI 命令](docs/api/cli-commands.md) | 命令行工具完整参考 |
-| [Memory API](docs/api/memory-api.md) | REST API 接口文档 |
-| [系统架构](docs/architecture/system-architecture.md) | 架构设计 |
-| [核心设计](docs/design/memory-system-unified-design.md) | 算法层设计文档 |
-
-## 项目结构
-
-```text
-.
-├── core/                         # 领域类型、评分集成、profile 分层
-├── processing/                   # 评分公式、LLM 客户端
-├── lifecycle/                    # 候选区、validator、去重、遗忘管理
-├── graph/                        # 知识图谱、entity 匹配
-├── tree/                         # 记忆树、L0-L3 摘要
-├── retrieval/                    # 召回编排、融合排序
-├── ingest/                       # 摄入管线、agent-history 导入
-├── feedback/                     # 反馈闭环
-├── adapters/                     # 产品/协议入口适配
-│   ├── openclaw/                 # OpenClaw 插件 + CLI
-│   ├── mcp/                      # MCP Server
-│   ├── rest/                     # REST API
-│   └── sdk/                      # JS SDK
-├── api/                          # Agent fast path
-├── console/                      # Web Console
-├── storage/                      # 存储抽象层
-└── docs/                         # 文档
-```
+| [快速开始](docs/guides/getting-started.md) | 安装、初始化和第一次召回 |
+| [配置说明](docs/guides/configuration.md) | 配置文件、模型、数据库和环境变量 |
+| [集成指南](docs/guides/integration.md) | OpenClaw、MCP、REST、SDK 和 Agent 集成 |
+| [最佳实践](docs/guides/best-practices.md) | 记忆治理、scope 设计和使用建议 |
+| [CLI 命令](docs/api/cli-commands.md) | `ms` 命令完整参考 |
+| [Memory API](docs/api/memory-api.md) | REST API 参考 |
+| [系统架构](docs/architecture/system-architecture.md) | 系统组成和模块职责 |
+| [技术栈](docs/architecture/technology-stack.md) | 运行时、存储、模型和 UI 技术选择 |
+| [统一记忆设计](docs/design/memory-system-unified-design.md) | 记忆模型、评分和召回设计 |
+| [数据模型](docs/design/schema.md) | 公开数据结构参考 |
 
 ## 开发
 
-### 运行测试
-
 ```bash
-npm test                  # vitest run
-npx tsc --noEmit          # 类型检查
-npm run eval:quick        # golden set 评估
+npm test
+npx -y -p typescript tsc --noEmit
+npm run eval:quick
 ```
 
-### 开发文档
+主要目录：
 
-- [CLAUDE.md](CLAUDE.md) - 项目概述（面向 AI）
-- [AGENTS.md](AGENTS.md) - 代理指南（面向 AI）
-- [CLAUDE.local.md](CLAUDE.local.md) - 详细开发文档导航（团队内部）
-- [AGENTS.local.md](AGENTS.local.md) - 代理编排详解（团队内部）
-
-## 版本
-
-当前版本：**v1.0.2**
-
-- 4 套评分体系（valueScore/importance/confidence/hotness）
-- 11 闸门 validator
-- LLM 结构化提取
-- 语义去重
-- L0-L3 树摘要
-- skill_candidate 聚合
-- 反馈闭环
-- 用户可见面（ms why/explain/forget）
-
-详见 [Changelog](docs/09-changelog/)。
+| 路径 | 说明 |
+|------|------|
+| `packages/core/` | 记忆领域模型、服务、评分、召回、摄入、存储和上下文构建 |
+| `packages/mcp/` | MCP 工具适配和 stdio server |
+| `packages/api/` | CLI、REST、SDK 和 Agent 快速上下文接口 |
+| `packages/ui/` | Web Console |
+| `plugins/openclaw/` | OpenClaw 插件 |
+| `plugins/codex/` | Codex 插件包 |
+| `plugins/claude-code/` | Claude Code source adapter |
+| `docs/` | 对外文档 |
 
 ## 许可
 
 MIT License
-
-## 贡献
-
-欢迎贡献！请查看 [贡献指南](CONTRIBUTING.md)。
-
----
-
-**内部开发文档**见 `.memory-docs/original-docs/`（不包含在开源发布中）。

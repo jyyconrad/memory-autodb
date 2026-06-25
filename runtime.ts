@@ -1,15 +1,17 @@
+import { randomUUID } from "node:crypto";
 import type { MemoryConfig } from "./config.js";
 import { DatabaseFactory } from "./db/factory.js";
 import type { DatabaseProvider } from "./db/types.js";
 import type { MemoryService } from "./core/service-types.js";
 import { DefaultMemoryService } from "./core/memory-service.js";
-import type { MemoryScope } from "./core/types.js";
+import { normalizeScope } from "./core/scope.js";
+import type { MemoryRecord, MemoryScope } from "./core/types.js";
 import { Embeddings } from "./processing/embeddings.js";
 import { computeContentHash } from "./processing/hash-utils.js";
 import { createLlmClient, type LlmClient } from "./processing/llm-client.js";
-import { createRoutingEngine, type RoutingEngine } from "./routing/index.js";
+import { createRoutingEngine, type RoutingEngine } from "./packages/core/src/routing/index.js";
 import { LegacyDatabaseAdapter } from "./storage/legacy-database-adapter.js";
-import { InMemoryMemoryStore } from "./storage/repositories/in-memory.js";
+import { createPersistentRepositories, type PersistentRepositories } from "./packages/core/src/storage/db-provider-adapters.js";
 import { IngestionPipeline } from "./ingest/pipeline.js";
 import { enqueueUniqueJob } from "./ingest/jobs.js";
 import { AgentFastPathService } from "./api/agent-fast-path.js";
@@ -23,6 +25,8 @@ import { createExtractCandidateHandler } from "./lifecycle/extract-candidate-han
 import { defaultTypeExtractor } from "./lifecycle/type-extractor.js";
 import { InMemoryTreeRepository } from "./tree/buffer.js";
 import { createBuildTreeHandler } from "./tree/build-tree-handler.js";
+import { PostgresTreeRepository } from "./tree/postgres-repository.js";
+import type { TreeRepository } from "./tree/types.js";
 import { InMemoryGraphRepository } from "./graph/repository.js";
 import { createExtractGraphHandler } from "./graph/extract-graph-handler.js";
 import { QueryHitsTracker } from "./graph/query-hits-tracker.js";
@@ -54,13 +58,13 @@ export interface MengshuRuntime {
   embeddings: Embeddings;
   memoryRepository: LegacyDatabaseAdapter;
   memoryService: MemoryService;
-  ingestionStore: InMemoryMemoryStore;
+  ingestionStore: PersistentRepositories;
   ingestionPipeline: IngestionPipeline;
   candidateRepository: InMemoryCandidateRepository;
   candidateReview: CandidateReviewService;
   consoleApi: ConsoleApi;
   llmClient: LlmClient;
-  treeRepository: InMemoryTreeRepository;
+  treeRepository: TreeRepository;
   graphRepository: InMemoryGraphRepository;
   queryHitsTracker: QueryHitsTracker;
   centralityCalculator: CentralityCalculator;
@@ -69,6 +73,10 @@ export interface MengshuRuntime {
   handlers: Record<"extract_candidate" | "build_tree" | "extract_graph", JobHandler>;
   start(): Promise<void>;
   stop(): Promise<void>;
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 export function validateEmbeddingConfig(config: { apiKey: string; baseURL?: string; model?: string }): void {
@@ -196,12 +204,23 @@ export function createMengshuRuntime(options: RuntimeOptions): MengshuRuntime {
     queryHitsTracker,
   });
 
-  const ingestionStore = new InMemoryMemoryStore();
+  const llmClient = options.llmClient ?? createLlmClient(options.config.llm);
+  const treeRepository: TreeRepository = options.config.dbType === "postgres" && options.config.postgres
+    ? new PostgresTreeRepository(options.config.postgres)
+    : new InMemoryTreeRepository();
+  const runtimeDefaultScope = options.defaultScope ?? defaultScope(appId);
+
+  // F5 阶段 1：使用持久化 repository 替代 in-memory store
+  const persistentRepos = createPersistentRepositories({
+    db,
+    embeddings,
+    scope: runtimeDefaultScope,
+  });
   const ingestionPipeline = new IngestionPipeline({
-    documents: ingestionStore.documents,
-    chunks: ingestionStore.chunks,
-    jobs: ingestionStore.jobs,
-    audit: ingestionStore.audit,
+    documents: persistentRepos.documents,
+    chunks: persistentRepos.chunks,
+    jobs: persistentRepos.jobs,
+    audit: persistentRepos.audit,
   });
 
   const candidateRepository = new InMemoryCandidateRepository();
@@ -213,7 +232,7 @@ export function createMengshuRuntime(options: RuntimeOptions): MengshuRuntime {
       return { memoryId: record.id };
     },
     audit: async ({ scope, action, targetId, metadata }) => {
-      await ingestionStore.audit.append({ scope, action, targetId, metadata });
+      await persistentRepos.audit.append({ scope, action, targetId, metadata });
     },
   });
 
@@ -223,9 +242,6 @@ export function createMengshuRuntime(options: RuntimeOptions): MengshuRuntime {
     candidateReview,
   });
 
-  const llmClient = options.llmClient ?? createLlmClient(options.config.llm);
-  const treeRepository = new InMemoryTreeRepository();
-  const runtimeDefaultScope = options.defaultScope ?? defaultScope(appId);
   const agentFastPath = new AgentFastPathService({
     defaultScope: runtimeDefaultScope,
     loadRecordsForScope: async (resolvedScope) => {
@@ -244,12 +260,54 @@ export function createMengshuRuntime(options: RuntimeOptions): MengshuRuntime {
         scope: resolvedScope,
         limit: opts?.limit ?? 10,
         minScore: opts?.minScore ?? 0.1,
+        filter: opts?.filter,
         searchAll: appId !== "openclaw",
       }),
+    storeObservation: async ({ scope, text, metadata }) => {
+      const resolvedScope = normalizeScope(scope, runtimeDefaultScope);
+      const now = Date.now();
+      const traceId = typeof metadata.traceId === "string" ? metadata.traceId : undefined;
+      const eventType = typeof metadata.eventType === "string" ? metadata.eventType : "observation";
+      const record: MemoryRecord = {
+        id: traceId && isUuid(traceId) ? traceId : randomUUID(),
+        scope: resolvedScope,
+        kind: "observation",
+        semanticType: "task_context",
+        container: "session_candidate",
+        lifecycleStatus: "active",
+        confidence: metadata.intent === "remember" ? 0.9 : 0.6,
+        text,
+        contentHash: computeContentHash(text),
+        importance: metadata.intent === "remember" ? 0.8 : 0.4,
+        category: "core",
+        dataType: "memory",
+        tableName: "memories",
+        metadata: {
+          ...metadata,
+          source: metadata.source ?? "agent-fast-path",
+          eventType,
+          updatedAt: now,
+          embeddingModel: options.config.embedding.model,
+          userId: resolvedScope.userId ?? "default",
+          projectPath: resolvedScope.projectId ?? "default",
+          agentName: resolvedScope.agentId ?? "default",
+        },
+        provenance: {
+          source: typeof metadata.source === "string" ? metadata.source : "agent-fast-path",
+          sessionId: resolvedScope.sessionId,
+          createdAt: now,
+        },
+        createdAt: now,
+        updatedAt: now,
+        vector: await embeddings.embed(text),
+      };
+      await memoryService.storeMemory({ record });
+      return { id: record.id };
+    },
     enqueueJob: async ({ type, payload }) => {
       const targetId =
         typeof payload.traceId === "string" ? payload.traceId : computeContentHash(JSON.stringify(payload));
-      const job = await enqueueUniqueJob(ingestionStore.jobs, { type, targetId, payload });
+      const job = await enqueueUniqueJob(persistentRepos.jobs, { type, targetId, payload });
       return job.id;
     },
     loadTreeSummaries: async (resolvedScope) => treeRepository.listSummaries({ scope: resolvedScope }),
@@ -261,7 +319,7 @@ export function createMengshuRuntime(options: RuntimeOptions): MengshuRuntime {
     candidates: candidateRepository,
     llmClient,
     audit: async ({ scope, action, targetId, metadata }) => {
-      await ingestionStore.audit.append({ scope, action, targetId, metadata });
+      await persistentRepos.audit.append({ scope, action, targetId, metadata });
     },
   });
   const buildTreeHandler = createBuildTreeHandler({
@@ -272,7 +330,7 @@ export function createMengshuRuntime(options: RuntimeOptions): MengshuRuntime {
     llmClient,
     graphRepository,
     audit: async ({ scope, action, targetId, metadata }) => {
-      await ingestionStore.audit.append({ scope, action, targetId, metadata });
+      await persistentRepos.audit.append({ scope, action, targetId, metadata });
     },
   });
 
@@ -289,7 +347,7 @@ export function createMengshuRuntime(options: RuntimeOptions): MengshuRuntime {
     embeddings,
     memoryRepository,
     memoryService,
-    ingestionStore,
+    ingestionStore: persistentRepos,
     ingestionPipeline,
     candidateRepository,
     candidateReview,
@@ -308,9 +366,15 @@ export function createMengshuRuntime(options: RuntimeOptions): MengshuRuntime {
     },
     start: async () => {
       await db.initialize();
+      if ("initialize" in treeRepository && typeof treeRepository.initialize === "function") {
+        await treeRepository.initialize();
+      }
     },
     stop: async () => {
       await db.close();
+      if ("close" in treeRepository && typeof treeRepository.close === "function") {
+        await treeRepository.close();
+      }
     },
   };
 }

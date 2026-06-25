@@ -7,7 +7,7 @@
 3. **MCP facade** — MCP 协议工具（stdio/HTTP transport）
 4. **JavaScript SDK** — 通过 REST API 的编程客户端
 
-参数以源码为准：[index.ts](../../index.ts)、[adapters/rest/router.ts](../../adapters/rest/router.ts)、[adapters/mcp/tools.ts](../../adapters/mcp/tools.ts)、[adapters/sdk/client.ts](../../adapters/sdk/client.ts)。
+参数以源码为准：[index.ts](../../index.ts)、[packages/api/src/rest/router.ts](../../packages/api/src/rest/router.ts)、[packages/mcp/src/tools.ts](../../packages/mcp/src/tools.ts)、[packages/api/src/sdk/client.ts](../../packages/api/src/sdk/client.ts)。旧路径 `adapters/rest/*`、`adapters/mcp/*`、`adapters/sdk/*` 仅保留兼容 re-export。
 
 ## 架构概述
 
@@ -312,7 +312,7 @@ private 内容不会返回 raw，只显示 `[private]` 预览。
 
 ## MCP facade
 
-[adapters/mcp/server.ts](../../adapters/mcp/server.ts) 当前是 transport-agnostic facade，不直接启动 stdio 或 HTTP MCP transport。工具注册表定义在 [adapters/mcp/tools.ts](../../adapters/mcp/tools.ts)。
+[packages/mcp/src/server.ts](../../packages/mcp/src/server.ts) 当前是 transport-agnostic facade，不直接启动 stdio 或 HTTP MCP transport。工具注册表定义在 [packages/mcp/src/tools.ts](../../packages/mcp/src/tools.ts)。
 
 ### 基础工具（8 个，始终可用）
 
@@ -322,7 +322,7 @@ private 内容不会返回 raw，只显示 `[private]` 预览。
 | `memory_recall` | 向量召回相关记忆 → `MemoryService.recall()` |
 | `memory_context` | 召回并打包 prompt-safe context → `MemoryService.buildContext()` |
 | `memory_observe` | 观察并保存记忆（当前等同 `memory_save`） → `MemoryService.storeMemory()` |
-| `memory_ingest` | 批量导入外部源 [Roadmap] — 返回未实现提示 |
+| `memory_ingest` | 摄入外部文本或本地文件（.txt/.md/.json）到持久化记忆 → `IngestionPipeline.ingest()`（需注入 pipeline；未注入时返回 not_implemented 提示） |
 | `memory_namespaces` | 返回已注册的 namespace 列表 |
 | `memory_forget` | 按 ids 或 filter 删除记忆 → `MemoryService.delete()` |
 | `memory_health` | 服务健康状态 → `MemoryService.health()` |
@@ -335,9 +335,39 @@ private 内容不会返回 raw，只显示 `[private]` 预览。
 | `memory_observe_light` | 运行中轻量观察提交 → `AgentFastPathService.observeLight()` |
 | `memory_lookup` | 运行中按需速查 → `AgentFastPathService.lookup()` |
 
+### memory_ingest 用法
+
+注入 `pipeline`（`runtime.ingestionPipeline`）后启用。入参：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `source` | string（必填） | `sourceType=text` 时为原始文本；`sourceType=file` 时为本地文件路径 |
+| `sourceType` | `"text" \| "file"` | 解释 `source` 的方式，默认 `text` |
+| `scope` | object | 记忆作用域；未传字段回落 MCP server 配置的 `defaultScope` |
+| `dryRun` | boolean | 为 true 时只返回 chunk 预览（`chunkCount`），不持久化 |
+| `chunkSize` | number | 可选最大 chunk 字符数 |
+| `sourceId` | string | 可选稳定来源标识 |
+
+```jsonc
+// 摄入原始文本
+{ "source": "项目使用 pnpm workspaces", "sourceType": "text",
+  "scope": { "appId": "mengshu", "projectId": "proj-1" } }
+// → { "documentId": "doc:...", "chunksAdmitted": 1, "chunksDropped": 0, "jobsQueued": 1 }
+
+// 摄入本地文件（仅允许 .txt/.md/.json）
+{ "source": "/abs/path/notes.md", "sourceType": "file" }
+
+// 预览切分，不落库
+{ "source": "long body...", "dryRun": true }
+// → { "dryRun": true, "chunkCount": 3 }
+```
+
+安全边界：`sourceType=file` 经 `loadFileContent` 校验——拒绝含 `..` 的路径遍历、限制扩展名白名单（.txt/.md/.json）、校验文件存在；摄入内容统一加 `[untrusted-source]` 注入防护 header。
+
+
 ## JavaScript SDK
 
-SDK 位于 `adapters/sdk/`，通过 REST API 访问 MemoryService。不依赖 OpenClaw，也不直接访问本地数据库。`sdk/js/` 保留为旧 deep import 的兼容 re-export。
+SDK 位于 `packages/api/src/sdk/`，通过 REST API 访问 MemoryService。不依赖 OpenClaw，也不直接访问本地数据库。`adapters/sdk/` 与 `sdk/js/` 保留为旧 deep import 的兼容 re-export。
 
 ### 初始化
 

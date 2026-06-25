@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-mengshu（梦枢）是面向多产品 Agent Runtime 的本地优先记忆中间件。当前版本 v1.0.2，P0-P4 算法层已全量交付。
+mengshu（梦枢）是面向多产品 Agent Runtime 的本地优先记忆中间件。当前版本 v1.0.4，P0-P4 算法层已全量交付。
 
 核心能力：LLM 结构化提取 → 11 闸门 validator → 4 套评分 → 语义去重 → L0-L3 树摘要 → 6 因子召回 → 5 槽位注入。
 
@@ -40,44 +40,67 @@ ms stats / ms search / ms scan / ms serve / ms mcp
 
 1. **"LLM 可以建议，不可单独裁决"**：所有入库经 `lifecycle/candidate-validator.ts` 11 闸门
 2. **"四套评分分工明确"**：valueScore（准入）/ importance（召回排序）/ confidence（去重治理）/ hotness（树路由）
-3. **"单一事实来源"**：权重在 `processing/scoring-weights.ts`，实体类型在 `graph/schema.ts`
+3. **"单一事实来源"**：权重在 `packages/core/src/scoring/scoring-weights.ts`，实体类型在 `graph/schema.ts`
 
 ### 核心目录
 
 | 目录 | 职责 | 关键文件 |
 |------|------|---------|
-| `core/` | 领域类型、评分集成、profile 分层、scope 隔离 | `recall-scoring.ts`、`profile-layer.ts`、`types.ts`、`scope.ts`、`memory-service.ts` |
-| `processing/` | 评分公式、LLM 客户端、extraction rules | `value-score.ts`、`importance-score.ts`、`confidence-score.ts`、`scoring-weights.ts`、`llm-client.ts`、`extraction-rules.ts` |
-| `lifecycle/` | 候选区、validator、去重、遗忘、晋升、skill 聚合 | `candidate-validator.ts`、`semantic-dedup.ts`、`forget-handler.ts`、`candidate-promotion.ts`、`skill-candidate-aggregator.ts`、`extract-candidate-handler.ts` |
-| `graph/` | 知识图谱、entity 三级匹配、LLM 抽取 | `llm-extractor.ts`、`entity-resolver.ts`、`centrality-calculator.ts`、`schema.ts`、`extract-graph-handler.ts` |
-| `tree/` | L0-L3 树摘要、leaf 路由、buffer | `seal.ts`、`leaf-routing.ts`、`faithfulness.ts`、`buffer.ts`、`build-tree-handler.ts` |
-| `retrieval/` | 召回编排、融合排序、prompt 注入防护、上下文打包 | `orchestrator.ts`、`fusion.ts`、`prompt-safety.ts`、`context-packer.ts` |
-| `ingest/` | 摄入管线、chunker、agent-history 导入 | `pipeline.ts`、`chunker.ts`、`agent-history/redaction.ts` |
-| `routing/` | 路由规则引擎 | `index.ts`、`rules.ts` |
-| `storage/` | 存储抽象层、索引 | `legacy-database-adapter.ts`、`repositories/`、`indexes/` |
-| `feedback/` | 反馈闭环 | `collector.ts`、`in-memory-store.ts` |
-| `adapters/openclaw/` | OpenClaw 插件适配 + CLI 命令 | `index.ts`、`hooks.ts`、`tools.ts`、`cli-why.ts`、`cli-recall.ts`、`cli-forget.ts`、`cli-doctor.ts`、`cli-ingest-history.ts`、`cli-setup.ts` |
-| `adapters/mcp/` | MCP Server 适配 | `server.ts`、`stdio-server.ts`、`tools.ts` |
-| `adapters/rest/` | REST API 协议适配 | `router.ts`、`auth.ts`、`types.ts` |
-| `api/` | Agent fast path | `agent-fast-path.ts` |
+| `core/` | 根层旧路径兼容 facade | `*.ts` re-export |
+| `packages/core/src/domain/` | 产品无关基础类型、scope、服务契约、评分与语义协议 | `types.ts`、`scope.ts`、`scope-policy.ts`、`service-types.ts`、`recall-scoring.ts`、`legacy-mapping.ts`、`status-mapping.ts`、`semantic-types.ts`、`semantic-type-mapper.ts`、`profile-layer.ts`、`recall-filter.ts` |
+| `packages/core/src/service/` | 核心服务实现 | `memory-service.ts` |
+| `packages/core/src/context/` | 5 槽位上下文构建与缓存 | `slot-context-builder.ts`、`slot-prompt-packer.ts`、`slot-snapshot.ts` |
+| `packages/core/src/runtime/` | 全局路径与项目 registry | `paths.ts`、`registry.ts` |
+| `packages/core/src/scoring/` | 评分公式与文本工具 | `value-score.ts`、`importance-score.ts`、`confidence-score.ts`、`scoring-weights.ts`、`hash-utils.ts`、`text-splitter.ts` |
+| `packages/core/src/runtime/llm/` | LLM / embedding runtime 与抽取词表 | `llm-client.ts`、`embeddings.ts`、`extraction-rules.ts` |
+| `processing/` | 旧路径兼容 facade | `*.ts` re-export |
+| `packages/core/src/retrieval/` | 召回编排、融合排序、prompt 注入防护、上下文打包 | `orchestrator.ts`、`fusion.ts`、`prompt-safety.ts`、`context-packer.ts` |
+| `retrieval/` | 旧路径兼容 facade | `*.ts` re-export |
+| `packages/core/src/db/` | LanceDB/Supabase/Postgres provider contract 与 factory | `types.ts`、`factory.ts`、`providers/` |
+| `db/` | 旧路径兼容 facade | `*.ts` re-export |
+| `packages/core/src/storage/` | 存储 adapter、repository 和文本索引 | `legacy-database-adapter.ts`、`repositories/`、`indexes/` |
+| `storage/` | 旧路径兼容 facade | `*.ts` re-export |
+| `packages/core/src/lifecycle/` | 候选区、validator、去重、遗忘、晋升、skill 聚合 | `candidate-validator.ts`、`semantic-dedup.ts`、`forget-handler.ts`、`candidate-promotion.ts`、`skill-candidate-aggregator.ts`、`extract-candidate-handler.ts` |
+| `lifecycle/` | lifecycle 旧路径兼容 facade | `*.ts` re-export |
+| `packages/core/src/graph/` | 知识图谱、entity 三级匹配、LLM 抽取 | `llm-extractor.ts`、`entity-resolver.ts`、`centrality-calculator.ts`、`schema.ts`、`extract-graph-handler.ts` |
+| `graph/` | graph 旧路径兼容 facade | `*.ts` re-export |
+| `packages/core/src/tree/` | L0-L3 树摘要、leaf 路由、buffer | `seal.ts`、`leaf-routing.ts`、`faithfulness.ts`、`buffer.ts`、`build-tree-handler.ts` |
+| `tree/` | tree 旧路径兼容 facade | `*.ts` re-export |
+| `packages/core/src/ingest/` | 摄入管线、chunker、scanner、agent-history 导入 | `pipeline.ts`、`chunker.ts`、`scanner/`、`agent-history/redaction.ts` |
+| `ingest/`、`scanner/` | ingest/scanner 旧路径兼容 facade | `*.ts` re-export |
+| `packages/core/src/routing/` | 路由规则引擎 | `index.ts`、`rules.ts` |
+| `routing/` | 路由规则旧路径兼容层 | `*.ts` re-export |
+| `packages/core/src/feedback/` | 反馈闭环 | `collector.ts`、`in-memory-store.ts` |
+| `feedback/` | 反馈闭环旧路径兼容层 | `*.ts` re-export |
+| `plugins/openclaw/` | OpenClaw memory slot 插件包 | `src/index.ts`、`src/register.ts`、`src/tools.ts`、`src/hooks.ts`、`src/context-fast.ts`、`src/scope.ts`、`src/manifest.ts`、`src/cli/`、`openclaw.plugin.json` |
+| `plugins/codex/` | Codex 插件包（MCP + skill + source adapter） | `.codex-plugin/plugin.json`、`.mcp.json`、`mcp/server.mjs`、`skills/mengshu-memory/SKILL.md`、`sources/adapter.ts` |
+| `plugins/claude-code/` | Claude Code source adapter 插件边界 | `sources/adapter.ts` |
+| `adapters/openclaw/` | OpenClaw 旧路径兼容层 | `scope.ts`、`manifest.ts`、`cli-*.ts` re-export |
+| `adapters/sources/` | Agent history source adapter 旧路径兼容层 | `index.ts`、`*/adapter.ts` re-export |
+| `packages/core/src/ingest/sources/` | 通用 source 解析能力 | `jsonl-parser.ts` |
+| `packages/mcp/src/` | MCP Server 适配 | `server.ts`、`stdio-server.ts`、`tools.ts` |
+| `packages/api/src/rest/` | REST API 协议适配 | `router.ts`、`auth.ts`、`types.ts` |
+| `packages/api/src/cli/` | `ms` CLI 主入口 | `ms.ts` |
+| `packages/api/src/agent-fast-path/` | Agent fast path | `index.ts` |
 | `server/` | 后台 daemon + worker | `daemon.ts`、`workers.ts`、`health.ts` |
-| `console/` | Web Console API | `api.ts`、`web/` |
-| `eval/` | Golden set 评估框架 | `runners/`、`goldens/`、`fixtures/` |
-| `adapters/sdk/` | JS SDK 封装 | `client.ts`、`types.ts` |
+| `packages/ui/src/console/` | Web Console 聚合 API | `api.ts`、`types.ts` |
+| `packages/ui/src/web/` | Web Console 静态前端 | `src/`、`index.html` |
+| `tests/eval/` | Golden set 评估框架 | `runners/`、`goldens/`、`fixtures/` |
+| `packages/api/src/sdk/` | JS SDK 封装 | `client.ts`、`types.ts` |
 | `sdk/js/` | 旧 deep import 兼容入口 | `client.ts`、`types.ts` |
 
 ### 4 套评分体系（SCORING_WEIGHTS_V1）
 
 | 评分 | 用途 | 消费方 | 维度 |
 |------|------|--------|------|
-| **valueScore** | 准入决策（drop / low / pending / active） | `lifecycle/admission-decision.ts` | 8 维（explicitness/durability/actionability/specificity/evidence/scopeFit/novelty/riskPenalty=-0.15） |
-| **importance** | 召回排序 + score breakdown | `core/recall-scoring.ts` | 4 项（salience_llm 0.45 + sourceAuthority 0.20 + explicitnessBonus 0.20 + typePrior 0.15） |
-| **confidence** | 去重治理 + 证据晋升 | `processing/confidence-score.ts` | 多证据贝叶斯累积 |
-| **hotness** | topic tree 路由 + 归档 | `graph/query-hits-tracker.ts` | 5 项（mention + source + recency + centrality + queryHits） |
+| **valueScore** | 准入决策（drop / low / pending / active） | `packages/core/src/lifecycle/admission-decision.ts` | 8 维（explicitness/durability/actionability/specificity/evidence/scopeFit/novelty/riskPenalty=-0.15） |
+| **importance** | 召回排序 + score breakdown | `packages/core/src/domain/recall-scoring.ts` | 4 项（salience_llm 0.45 + sourceAuthority 0.20 + explicitnessBonus 0.20 + typePrior 0.15） |
+| **confidence** | 去重治理 + 证据晋升 | `packages/core/src/scoring/confidence-score.ts` | 多证据贝叶斯累积 |
+| **hotness** | topic tree 路由 + 归档 | `packages/core/src/graph/query-hits-tracker.ts` | 5 项（mention + source + recency + centrality + queryHits） |
 
 ### 决策阈值（D-01~D-03）
 
-- **D-01 riskPenalty**：-0.15（`processing/scoring-weights.ts:32`）
+- **D-01 riskPenalty**：-0.15（`packages/core/src/scoring/scoring-weights.ts:32`）
 - **D-02 Admission 阈值带**：drop<0.40 / low 0.40-0.55 / pending 0.55-0.88 / active≥0.88
 - **D-03 Leaf 分级路由**：0.55-0.70 仅进 source tree，≥0.70 进 topic/global
 
@@ -99,8 +122,15 @@ ms stats / ms search / ms scan / ms serve / ms mcp
     "summarizationModel": "gpt-4o-mini",
     "reasoningModel": "gpt-4o"
   },
-  "dbType": "lancedb",
-  "dbPath": "~/.mengshu/memory/lancedb",
+  "dbType": "postgres",
+  "postgres": {
+    "host": "${PG_HOST}",
+    "port": 5432,
+    "database": "${PG_DATABASE}",
+    "user": "${PG_USER}",
+    "password": "${PG_PASSWORD}",
+    "ssl": false
+  },
   "autoCapture": true,
   "autoRecall": true
 }
@@ -141,10 +171,10 @@ ms stats / ms search / ms scan / ms serve / ms mcp
 - LLM 调用 temperature 一律 0.0（确定性提取）
 - LLM 默认超时 30s（`DEFAULT_LLM_TIMEOUT_MS`）
 - LLM 结构化抽取使用 `llm-client.ts` 的 `extractStructured`（JSON schema 约束）
-- SQL 表名经运行时白名单校验（`db/providers/supabase.ts`）
+- SQL 表名经运行时白名单校验（`packages/core/src/db/providers/supabase.ts`）
 - 环境变量名经 `/^[A-Z_][A-Z0-9_]*$/` 白名单
-- 记忆内容注入上下文时自动 HTML 转义（`retrieval/prompt-safety.ts`）
+- 记忆内容注入上下文时自动 HTML 转义（`packages/core/src/retrieval/prompt-safety.ts`）
 - agent-history 导入前自动 redaction（`ingest/agent-history/redaction.ts`）
-- 路径解析统一通过 `core/paths.ts`，不允许各模块自行拼路径
+- 路径解析统一通过 `packages/core/src/runtime/paths.ts`（`core/paths.ts` 为旧路径兼容转发），不允许各模块自行拼路径
 - 修改阈值/权重/prompt 后必须跑全量 golden set（`npm run eval:quick` 或 6 套 eval suite）
 - 配置缺失时给出友好错误信息，支持 `ms doctor` 自检

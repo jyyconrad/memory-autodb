@@ -26,14 +26,16 @@ coverage
 .nyc_output
 
 # Temp/scratch
-test-pg-connection.js
 *.tmp
 *.swp
 
 # Process files (orchestrator)
 .claude/.DS_Store
+.claude/settings.json
+.claude/tasks/
 
 # Internal documentation (not for open source release)
 .memory-docs/
+.internal/
 CLAUDE.local.md
 AGENTS.local.md

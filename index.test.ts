@@ -37,8 +37,10 @@ describe("memory plugin e2e", () => {
     // Dynamic import to avoid loading LanceDB when not testing
     const { default: memoryPlugin } = await import("./index.js");
 
-    expect(memoryPlugin.id).toBe("mengshu");
-    expect(memoryPlugin.name).toBe("Memory (AutoDB)");
+    expect(memoryPlugin.id).toBe("mengshu-openclaw");
+    expect(memoryPlugin.legacyPluginIds).toContain("memory-autodb");
+    expect(memoryPlugin.legacyPluginIds).toContain("mengshu");
+    expect(memoryPlugin.name).toBe("Mengshu OpenClaw");
     expect(memoryPlugin.kind).toBe("memory");
     expect(memoryPlugin.configSchema).toBeDefined();
     // oxlint-disable-next-line typescript/unbound-method
@@ -378,6 +380,8 @@ describeLive("memory plugin live tests", () => {
     // oxlint-disable-next-line typescript/no-explicit-any
     const registeredServices: any[] = [];
     // oxlint-disable-next-line typescript/no-explicit-any
+    const registeredMemoryRuntimes: any[] = [];
+    // oxlint-disable-next-line typescript/no-explicit-any
     const registeredHooks: Record<string, any[]> = {};
     const logs: string[] = [];
 
@@ -421,6 +425,12 @@ describeLive("memory plugin live tests", () => {
         }
         registeredHooks[hookName].push(handler);
       },
+      registerMemoryPromptSection: () => {},
+      registerMemoryFlushPlan: () => {},
+      // oxlint-disable-next-line typescript/no-explicit-any
+      registerMemoryRuntime: (runtime: any) => {
+        registeredMemoryRuntimes.push(runtime);
+      },
       resolvePath: (p: string) => p,
     };
 
@@ -438,6 +448,8 @@ describeLive("memory plugin live tests", () => {
     expect(registeredTools.map((t) => t.opts?.name)).toContain("memory_context_fast");
     expect(registeredClis.length).toBe(1);
     expect(registeredServices.length).toBe(1);
+    expect(registeredServices[0].id).toBe("mengshu-openclaw");
+    expect(registeredMemoryRuntimes.length).toBe(1);
 
     // Get tool functions
     const storeTool = registeredTools.find((t) => t.opts?.name === "memory_store")?.tool;

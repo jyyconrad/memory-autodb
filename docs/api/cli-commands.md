@@ -1,6 +1,6 @@
 # CLI 命令
 
-`ms` 是 mengshu 的管理命令组。命令由 OpenClaw 插件注册，当前代码入口在 [index.ts](../../index.ts) 和 [adapters/openclaw/cli.ts](../../adapters/openclaw/cli.ts)。
+`ms` 是 mengshu 的管理命令组。当前全局 CLI 入口是 [bin/ms.ts](../../bin/ms.ts)，主实现位于 [packages/api/src/cli/ms.ts](../../packages/api/src/cli/ms.ts)；OpenClaw 插件内的 CLI 注册实现位于 [plugins/openclaw/src/cli/](../../plugins/openclaw/src/cli)，旧 [adapters/openclaw/cli.ts](../../adapters/openclaw/cli.ts) 仅作为兼容转发。
 
 ## 命令总览
 
@@ -17,6 +17,7 @@
 | `ms kb:list` | 列出 `knowledge*` 知识库表 |
 | `ms init` | 初始化项目指针和全局 manifest（v0.1.2+） |
 | `ms migrate-home` | 迁移 `~/.openclaw/` 到 `~/.mengshu/`（v0.1.2+） |
+| `ms migrate-openclaw-plugin-id` | 迁移 OpenClaw memory 插件 id 到 `mengshu-openclaw` |
 | `ms serve` | 启动本机 REST server 和 `/console` |
 | `ms mcp` | 启动 stdio MCP server，供 Claude Desktop / Cursor 等客户端接入 |
 | `ms status` | 输出中间件状态 |
@@ -26,6 +27,7 @@
 | **`ms recall --explain`** | **召回并显示 importance 4 项 breakdown + filteredReason（v1.0.2 P1）** |
 | **`ms forget <id>`** | **撤回/归档/纠错/回滚合并记忆（v1.0.2 P1）** |
 | **`ms project ingest-history --dry-run`** | **预览 Codex / Claude Code / OpenClaw agent history 导入（只读，不写库）** |
+| **`ms project ingest-history --apply`** | **对采样历史执行真实抽取 + 校验 + 召回链路并落盘验证产物（不写入生产记忆库）** |
 
 ## `ms project ingest-history`
 
@@ -35,7 +37,24 @@ ms project ingest-history --from codex,claude-code --since 90d --dry-run
 ms project ingest-history --from openclaw --source-root /path/to/history --dry-run
 ```
 
-当前阶段只支持 `--dry-run`：扫描来源文件、解析 canonical events、统计 session / chunk 预估、脱敏命中和坏行，不调用 embedding，也不写入 MemoryService。`--apply` 会明确提示尚未支持。
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `--from <providers>` | 否 | 逗号分隔的来源：`codex`、`claude-code`、`openclaw`，默认 `codex` |
+| `--since <window>` | 否 | 只包含该时间窗之后的事件，如 `30d`、`12h` |
+| `--source-root <path>` | 否 | 覆盖所选来源的根路径 |
+| `--max-files <n>` | 否 | 每个来源最多扫描的文件数 |
+| `--dry-run` | 否 | 预览模式（默认开启） |
+| `--apply` | 否 | 对采样历史执行真实抽取 + 校验 + 召回链路，并落盘验证产物 |
+
+### `--dry-run`（默认）
+
+扫描来源文件、解析 canonical events、统计 session / chunk 预估、脱敏命中和坏行，不调用 embedding，也不写入 MemoryService。
+
+### `--apply`
+
+对采样到的历史文本执行真实链路：LLM 抽取候选 → validator 校验 → 召回与上下文构建，并把每一阶段的过程产物（manifest、候选、校验决策、召回排序、问答与分析）落盘到 `~/.mengshu/eval-corpus/` 下的验证目录，便于回放与复盘。
+
+注意：`--apply` 用于验证导入链路质量，不会把记忆写入你的生产记忆库。
 
 ## `ms stats`
 
@@ -217,6 +236,22 @@ ms migrate-home --execute --force
 - 迁移后旧 `~/.openclaw/` 仍会保留，可手动删除。
 - 如果检测到项目指针 `.mengshu.json`，会提示重新运行 `ms init` 更新 registry。
 - 迁移后请更新客户端配置（Codex/Claude Desktop/OpenClaw）指向新路径。
+
+## `ms migrate-openclaw-plugin-id`
+
+**用途**：将 OpenClaw memory slot 插件 id 从旧的 `memory-autodb` / `mengshu` 迁移到 `mengshu-openclaw`。
+
+```bash
+ms migrate-openclaw-plugin-id
+ms migrate-openclaw-plugin-id --execute
+```
+
+选项：
+
+- `--execute`：执行迁移；默认只预览。
+- `--config <path>`：指定单个 OpenClaw 配置文件；默认同时处理 `~/.openclaw/openclaw.json` 与 `~/.openclaw/conf/plugins.json`。
+- `--no-backup`：执行时不备份配置文件。
+- `--keep-legacy-entry`：保留旧 entry 并置为 disabled；默认删除旧 entry，避免 OpenClaw stale config warning。
 
 ## `ms serve`
 
