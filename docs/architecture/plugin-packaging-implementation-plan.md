@@ -1,6 +1,6 @@
 # 多产品插件化实施方案
 
-> 日期：2026-06-18  
+> 日期：2026-06-18
 > 范围：把 mengshu / memory-autodb 从“单仓库多适配器”升级为“核心能力包 + 多产品插件包”。首期产品：OpenClaw、Codex。
 > 相关：整体仓库目录与包结构见 [项目目录层级与包结构重构方案](project-structure-refactor-plan.md)。
 

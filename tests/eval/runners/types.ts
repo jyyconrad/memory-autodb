@@ -499,4 +499,3 @@ export function hasTreeExpectations(expected: ExpectedSpec): boolean {
 export function hasRelationExpectations(expected: ExpectedSpec): boolean {
   return !!(expected.relations && expected.relations.length > 0);
 }
-

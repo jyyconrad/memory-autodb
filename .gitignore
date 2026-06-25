@@ -31,10 +31,11 @@ coverage
 
 # Process files (orchestrator)
 .claude/.DS_Store
+.claude/settings.json
+.claude/tasks/
 
 # Internal documentation (not for open source release)
 .memory-docs/
 .internal/
-CALUDE.local.md
+CLAUDE.local.md
 AGENTS.local.md
-

@@ -112,4 +112,3 @@ Do expose:
 
 - For public docs templates and detailed writing rules, read `references/writing-guide.md`.
 - For the internal 9-directory documentation rules, consult `.claude/rules/documentation-rules.md` in this repository if needed.
-

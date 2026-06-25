@@ -198,4 +198,3 @@ export async function validateFaithfulness(params: {
 
   return { valid: true, usedLlmJudge: true };
 }
-

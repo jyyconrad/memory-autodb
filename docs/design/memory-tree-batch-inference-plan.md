@@ -1,8 +1,8 @@
 # 记忆树批量推理方案
 
-> 日期：2026-06-18  
-> 状态：方案草案  
-> 范围：为记忆树构建中的摘要、faithfulness judge 和结论生成增加异步批量模型请求能力。  
+> 日期：2026-06-18
+> 状态：方案草案
+> 范围：为记忆树构建中的摘要、faithfulness judge 和结论生成增加异步批量模型请求能力。
 > 参考：SiliconFlow [批量推理文档](https://api-docs.siliconflow.cn/docs/userguide/guides/batch)。
 
 ## 背景
