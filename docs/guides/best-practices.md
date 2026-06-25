@@ -131,13 +131,13 @@ mengshu 自动缓存 embedding：
 ### 批量操作
 
 ```typescript
-// ❌ 逐条存储（慢）
+// 逐条存储适合少量手动写入
 for (const text of texts) {
-  await memory.store({ text });
+  await memory.storeMemory({ record: createRecord(text) });
 }
 
-// ✅ 批量存储（快）
-await memory.storeBatch(texts.map(text => ({ text })));
+// 大批量历史内容建议先走 dry-run，再确认导入
+// ms project ingest-history --from codex --dry-run
 ```
 
 ### 控制 LLM 调用

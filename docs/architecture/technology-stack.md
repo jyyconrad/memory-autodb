@@ -31,7 +31,6 @@
 | 依赖 | 当前版本 | 用途 |
 |------|----------|------|
 | `openai` | `^6.22.0` | **OpenAI SDK**（`processing/llm-client.ts` / `processing/embeddings.ts`），支持 OpenAI-compatible 端点（Ollama、通义千问等） |
-| `langchain` | `^0.2.0` | 兼容旧处理链路（legacy，待逐步移除） |
 
 ### 存储 / 数据库
 
@@ -45,18 +44,11 @@
 
 | 依赖 | 当前版本 | 用途 |
 |------|----------|------|
-| `front-matter` | `^4.0.2` | Markdown front matter 解析（`ingest/chunker.ts`） |
 | `glob` | `^10.4.5` | 文件扫描（`ingest/agent-history/`） |
 | `ignore` | `^5.3.2` | `.gitignore` 规则处理 |
 | `md5` | `^2.3.0` | legacy 哈希依赖（待逐步移除） |
 | `p-limit` | `^6.1.0` | **并发控制**（批量 embedding / LLM 调用） |
 | `p-retry` | `^6.2.0` | **重试机制**（LLM/embedding 容错） |
-
-## 可选依赖（跨平台构建）
-
-| 依赖 | 用途 |
-|------|------|
-| `@rolldown/binding-*` (5 平台) | Rolldown bundler 原生绑定（darwin-arm64/x64, linux-arm64/x64, win32-x64） |
 
 ## 开发依赖
 

@@ -1,7 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
-import frontMatter from "front-matter";
 import type { MemoryMetadata } from "../../db/types.js";
 import { TextSplitter, type TextSplitOptions } from "../../scoring/text-splitter.js";
+import { parseFrontMatter } from "../front-matter.js";
 
 export interface ProcessedDocument {
   /** 文件路径 */
@@ -38,8 +38,8 @@ export class MarkdownProcessor {
     const content = await readFile(filePath, "utf-8");
     const fileStat = await stat(filePath);
 
-    // 解析front matter
-    const { attributes, body } = frontMatter<Record<string, unknown>>(content);
+    // 解析 front matter
+    const { attributes, body } = parseFrontMatter(content);
 
     // 提取元数据
     const metadata: MemoryMetadata = {

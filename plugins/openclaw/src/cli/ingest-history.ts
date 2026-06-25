@@ -31,7 +31,7 @@ import {
   type QaTraceEntry,
   type RecallTraceEntry,
   type ValidatorDecisionEntry,
-} from "../../../../tests/eval/runners/trace-writer.js";
+} from "../../../../packages/core/src/eval/trace-writer.js";
 import {
   validateCandidate,
   type RawCandidate,

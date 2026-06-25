@@ -19,7 +19,7 @@ import {
   resolveRunDir,
   truncateEmbedding,
   truncateText,
-} from "./trace-writer.js";
+} from "../../../packages/core/src/eval/trace-writer.js";
 
 describe("trace-writer 工具函数", () => {
   it("truncateText 保留短文本不变", () => {

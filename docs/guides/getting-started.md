@@ -3,10 +3,12 @@
 ## 安装
 
 ```bash
-npm install -g mengshu
+npm install -g @mengshu/core
 # 或者
-pnpm add mengshu
+pnpm add @mengshu/core
 ```
+
+全局安装会提供 `ms` 和 `mengshu` 两个命令；项目内安装可用于 REST SDK 或 MCP/OpenClaw 入口集成。
 
 ## 初始化配置
 
@@ -29,38 +31,54 @@ ms init
 
 ### 自动捕获记忆
 
-在代码中启用自动捕获：
+在代码中调用本机 REST 服务：
+
+```bash
+ms serve --port 3847
+```
 
 ```typescript
-import { MemoryService } from 'mengshu';
+import { MemoryClient } from "@mengshu/core/api";
 
-const memory = new MemoryService({
-  autoCapture: true,
-  autoRecall: true
+const memory = new MemoryClient({
+  baseUrl: "http://127.0.0.1:3847"
 });
 
-// 自动捕获对话中的关键信息
-await memory.processMessage({
-  role: 'user',
-  content: '我偏好使用 TypeScript 而不是 JavaScript'
-});
+const record = {
+  id: "mem_1",
+  scope: {
+    tenantId: "local",
+    appId: "codex",
+    userId: "default",
+    projectId: "default",
+    agentId: "default",
+    namespace: "memories"
+  },
+  kind: "preference" as const,
+  text: "用户偏好使用 TypeScript",
+  contentHash: "mem_1",
+  importance: 0.8,
+  category: "preference" as const,
+  dataType: "memory" as const,
+  metadata: {},
+  provenance: { source: "user" },
+  createdAt: Date.now()
+};
+
+await memory.storeMemory({ record });
 ```
 
 ### 手动存储记忆
 
 ```typescript
-await memory.store({
-  text: '用户偏好使用 TypeScript',
-  semanticType: 'profile',
-  targetScope: 'global'
-});
+await memory.storeMemory({ record });
 ```
 
 ### 召回记忆
 
 ```typescript
 const memories = await memory.recall({
-  query: '用户的编程语言偏好',
+  query: "用户的编程语言偏好",
   limit: 5
 });
 ```

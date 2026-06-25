@@ -1,12 +1,12 @@
 {
   "name": "mengshu-memory",
   "version": "1.0.4",
-  "description": "Use mengshu / memory-autodb memory from Codex through MCP.",
+  "description": "Use mengshu memory from Codex through MCP.",
   "author": {
     "name": "mengshu"
   },
-  "homepage": "https://github.com/jyyconrad/memory-autodb",
-  "repository": "https://github.com/jyyconrad/memory-autodb",
+  "homepage": "https://github.com/jyyconrad/mengshu",
+  "repository": "https://github.com/jyyconrad/mengshu",
   "license": "MIT",
   "keywords": ["memory", "mcp", "codex", "agent"],
   "skills": "./skills",
@@ -14,7 +14,7 @@
   "interface": {
     "displayName": "Mengshu Memory",
     "shortDescription": "Recall and save long-term agent memory",
-    "longDescription": "Connect Codex to mengshu / memory-autodb through MCP, with workflows for recalling project context, saving stable decisions, and managing memory hygiene.",
+    "longDescription": "Connect Codex to mengshu through MCP, with workflows for recalling project context, saving stable decisions, and managing memory hygiene.",
     "developerName": "mengshu",
     "category": "Developer Tools",
     "capabilities": ["Read", "Write"],

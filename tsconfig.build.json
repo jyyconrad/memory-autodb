@@ -1,0 +1,50 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": [
+    "index.ts",
+    "runtime.ts",
+    "config.ts",
+    "bin/**/*.ts",
+    "scripts/**/*.ts",
+    "adapters/**/*.ts",
+    "api/**/*.ts",
+    "console/**/*.ts",
+    "core/**/*.ts",
+    "db/**/*.ts",
+    "feedback/**/*.ts",
+    "graph/**/*.ts",
+    "ingest/**/*.ts",
+    "lifecycle/**/*.ts",
+    "migration/**/*.ts",
+    "packages/**/*.ts",
+    "plugins/**/*.ts",
+    "processing/**/*.ts",
+    "retrieval/**/*.ts",
+    "routing/**/*.ts",
+    "scanner/**/*.ts",
+    "server/**/*.ts",
+    "sdk/**/*.ts",
+    "storage/**/*.ts",
+    "tree/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests",
+    "**/*.test.ts",
+    "hybrid-integration.test.ts",
+    "index.test.ts",
+    "config-validation.test.ts",
+    "config.middleware.test.ts",
+    "runtime.test.ts",
+    "vitest.config.ts"
+  ]
+}

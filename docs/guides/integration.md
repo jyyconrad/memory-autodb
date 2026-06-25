@@ -2,7 +2,7 @@
 
 ## OpenClaw 插件集成
 
-mengshu / memory-autodb 现在以 OpenClaw memory slot 插件形态集成。插件包位于 `plugins/openclaw`，canonical id 为 `mengshu-openclaw`，旧 id `memory-autodb` 和 `mengshu` 通过 `legacyPluginIds` 兼容。
+mengshu 以 OpenClaw memory slot 插件形态集成。插件包位于 `plugins/openclaw`，canonical id 为 `mengshu-openclaw`，旧 id `memory-autodb` 和 `mengshu` 通过 `legacyPluginIds` 兼容。
 
 ### 安装插件
 
@@ -124,46 +124,53 @@ DELETE /v1/memories/:id
 ### 安装依赖
 
 ```bash
-npm install mengshu
+npm install @mengshu/core
 ```
 
-### 初始化服务
+### 初始化客户端
+
+先启动本机 REST 服务：
+
+```bash
+ms serve --port 3847
+```
 
 ```typescript
-import { MemoryService } from 'mengshu';
+import { MemoryClient } from "@mengshu/core/api";
 
-const memory = new MemoryService({
-  llm: {
-    apiKey: process.env.OPENAI_API_KEY,
-    extractionModel: 'gpt-4o-mini'
-  },
-  embedding: {
-    apiKey: process.env.OPENAI_API_KEY,
-    model: 'text-embedding-3-small'
-  },
-  dbType: 'postgres',
-  postgres: {
-    host: process.env.PG_HOST,
-    port: 5432,
-    database: process.env.PG_DATABASE,
-    user: process.env.PG_USER,
-    password: process.env.PG_PASSWORD
-  }
+const memory = new MemoryClient({
+  baseUrl: "http://127.0.0.1:3847",
+  token: process.env.MENGSHU_API_TOKEN
 });
-
-await memory.initialize();
 ```
 
 ### 存储记忆
 
 ```typescript
-await memory.store({
-  text: '用户喜欢使用 TypeScript',
-  semanticType: 'profile',
-  targetScope: 'project',
-  metadata: {
-    source: 'user-preference',
-    timestamp: Date.now()
+await memory.storeMemory({
+  record: {
+    id: "mem_1",
+    scope: {
+      tenantId: "local",
+      appId: "codex",
+      userId: "default",
+      projectId: "default",
+      agentId: "default",
+      namespace: "memories"
+    },
+    kind: "preference",
+    semanticType: "profile",
+    text: "用户喜欢使用 TypeScript",
+    contentHash: "mem_1",
+    importance: 0.8,
+    category: "preference",
+    dataType: "memory",
+    metadata: {
+      source: "user-preference",
+      timestamp: Date.now()
+    },
+    provenance: { source: "user" },
+    createdAt: Date.now()
   }
 });
 ```
@@ -172,25 +179,25 @@ await memory.store({
 
 ```typescript
 const result = await memory.recall({
-  query: '编程语言偏好',
+  query: "编程语言偏好",
   limit: 5,
-  minImportance: 0.7,
-  scope: 'project'
+  minScore: 0.1,
+  scope: { projectId: "default" }
 });
 
-console.log(result.memories); // 召回的记忆列表
-console.log(result.context);  // 格式化后的上下文
+console.log(result.hits); // 召回的记忆列表
 ```
 
-### 查询记忆详情
+### 构建上下文
 
 ```typescript
-const detail = await memory.getMemoryDetail(memoryId);
+const context = await memory.buildContext({
+  query: "编程语言偏好",
+  title: "Relevant Memories",
+  limit: 5
+});
 
-console.log(detail.valueScore);     // 准入评分
-console.log(detail.importance);     // 召回排序评分
-console.log(detail.confidence);     // 去重治理评分
-console.log(detail.importanceBreakdown); // 评分明细
+console.log(context.content);
 ```
 
 ## Agent History 导入
@@ -218,14 +225,8 @@ dry-run 会自动统计脱敏命中：
 
 ### 代码导入
 
-```typescript
-import { importAgentHistory } from 'mengshu/ingest/agent-history';
-
-await importAgentHistory({
-  filePath: './history.jsonl',
-  redact: true,
-  scope: 'project'
-});
+```bash
+ms project ingest-history --from codex --dry-run
 ```
 
 ## 下一步

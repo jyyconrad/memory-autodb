@@ -15,7 +15,7 @@ import {
   reviewCandidates,
   type CandidateReviewAction,
   type Scope,
-} from "./api";
+} from "./api.js";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) {

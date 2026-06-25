@@ -1,6 +1,6 @@
-import type { DatabaseProvider, MemoryEntry, MemoryQueryOptions, TableName, TableStats } from "../types";
-import { LanceDBProvider } from "./lancedb";
-import { SupabaseProvider } from "./supabase";
+import type { DatabaseProvider, MemoryEntry, MemoryQueryOptions, TableName, TableStats } from "../types.js";
+import { LanceDBProvider } from "./lancedb.js";
+import { SupabaseProvider } from "./supabase.js";
 
 /**
  * 混合模式数据库提供者

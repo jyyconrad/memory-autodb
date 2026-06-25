@@ -1,24 +1,101 @@
 {
   "name": "@mengshu/core",
   "version": "1.0.4",
-  "private": true,
   "description": "Local-first memory middleware (mengshu) for OpenClaw-type Agent Runtime products with auto-recall/capture",
   "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/jyyconrad/mengshu#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jyyconrad/mengshu.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jyyconrad/mengshu/issues"
+  },
+  "keywords": [
+    "mengshu",
+    "memory",
+    "mcp",
+    "agent",
+    "openclaw",
+    "codex"
+  ],
+  "main": "./dist/packages/core/src/index.js",
+  "types": "./dist/packages/core/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/packages/core/src/index.d.ts",
+      "import": "./dist/packages/core/src/index.js"
+    },
+    "./api": {
+      "types": "./dist/packages/api/src/index.d.ts",
+      "import": "./dist/packages/api/src/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/packages/mcp/src/index.d.ts",
+      "import": "./dist/packages/mcp/src/index.js"
+    },
+    "./ui": {
+      "types": "./dist/packages/ui/src/index.d.ts",
+      "import": "./dist/packages/ui/src/index.js"
+    },
+    "./openclaw": {
+      "types": "./dist/plugins/openclaw/src/index.d.ts",
+      "import": "./dist/plugins/openclaw/src/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "docs/README.md",
+    "docs/api",
+    "docs/guides",
+    "docs/architecture/system-architecture.md",
+    "docs/architecture/technology-stack.md",
+    "docs/design/memory-system-unified-design.md",
+    "docs/design/schema.md",
+    "config.example.json",
+    "config/*.example.json",
+    "scripts/sql",
+    "plugins/codex/.codex-plugin/plugin.json",
+    "plugins/codex/.mcp.json",
+    "plugins/codex/mcp/server.mjs",
+    "plugins/codex/skills",
+    "plugins/codex/README.md",
+    "plugins/openclaw/openclaw.plugin.json",
+    "plugins/openclaw/README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@lancedb/lancedb": "^0.26.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@sinclair/typebox": "0.34.48",
-    "@supabase/supabase-js": "^2.45.0",
+    "@supabase/supabase-js": "^2.108.2",
     "commander": "^10.0.1",
-    "front-matter": "^4.0.2",
     "glob": "^10.4.5",
     "ignore": "^5.3.2",
-    "langchain": "^0.2.0",
     "md5": "^2.3.0",
-    "openai": "^6.22.0",
+    "nanoid": "^5.1.16",
+    "openai": "^6.45.0",
     "p-limit": "^6.1.0",
     "p-retry": "^6.2.0",
-    "pg": "^8.16.0"
+    "pg": "^8.16.0",
+    "seedrandom": "^3.0.5"
   },
   "devDependencies": {
     "@types/node": "^25.3.1",
@@ -27,22 +104,27 @@
     "@vitest/coverage-v8": "^4.1.8",
     "dotenv": "^17.3.1",
     "openclaw": "*",
-    "seedrandom": "^3.0.5",
     "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
     "vitest": "^4.0.18"
   },
-  "optionalDependencies": {
-    "@rolldown/binding-darwin-arm64": "^1.1.1",
-    "@rolldown/binding-darwin-x64": "^1.1.1",
-    "@rolldown/binding-linux-arm64-gnu": "^1.1.1",
-    "@rolldown/binding-linux-x64-gnu": "^1.1.1",
-    "@rolldown/binding-win32-x64-msvc": "^1.1.1"
+  "peerDependencies": {
+    "openclaw": "*"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
   },
   "bin": {
-    "ms": "./bin/ms.ts",
-    "mengshu": "./bin/ms.ts"
+    "ms": "./dist/bin/ms.js",
+    "mengshu": "./dist/bin/ms.js"
   },
   "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "pack:dry-run": "npm pack --dry-run",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -50,7 +132,7 @@
   },
   "openclaw": {
     "extensions": [
-      "./plugins/openclaw/src/index.ts"
+      "./dist/plugins/openclaw/src/index.js"
     ]
   }
 }

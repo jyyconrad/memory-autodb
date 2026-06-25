@@ -14,7 +14,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { DatabaseProvider, MemoryEntry, MemoryQueryOptions, TableName, TableStats, KnowledgeBaseConfig } from "../types";
+import type { DatabaseProvider, MemoryEntry, MemoryQueryOptions, TableName, TableStats, KnowledgeBaseConfig } from "../types.js";
 import { vectorDimsForModel } from "../../../../../config.js";
 
 const DEFAULT_TABLES: TableName[] = ["memories", "knowledge"];

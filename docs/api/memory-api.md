@@ -372,7 +372,7 @@ SDK 位于 `packages/api/src/sdk/`，通过 REST API 访问 MemoryService。不�
 ### 初始化
 
 ```typescript
-import { MemoryClient } from "mengshu/sdk/js/client";
+import { MemoryClient, MemoryClientError } from "@mengshu/core/api";
 
 const client = new MemoryClient({
   baseUrl: "http://127.0.0.1:3847",

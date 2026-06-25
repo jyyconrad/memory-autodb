@@ -1,9 +1,9 @@
 import type { MemoryConfig } from "../../../../config.js";
-import type { DatabaseProvider } from "./types";
-import { LanceDBProvider } from "./providers/lancedb";
-import { SupabaseProvider } from "./providers/supabase";
-import { HybridProvider } from "./providers/hybrid";
-import { PostgresProvider } from "./providers/postgres";
+import type { DatabaseProvider } from "./types.js";
+import { LanceDBProvider } from "./providers/lancedb.js";
+import { SupabaseProvider } from "./providers/supabase.js";
+import { HybridProvider } from "./providers/hybrid.js";
+import { PostgresProvider } from "./providers/postgres.js";
 
 /**
  * 数据库工厂类

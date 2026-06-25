@@ -8,7 +8,7 @@ import {
   type RawCandidate,
   type CandidateSource,
 } from "../../../packages/core/src/lifecycle/candidate-validator.js";
-import type { ValidatorDecisionEntry } from "./trace-writer.js";
+import type { ValidatorDecisionEntry } from "../../../packages/core/src/eval/trace-writer.js";
 
 describe("validator integration with trace", () => {
   it("should produce ValidatorDecisionEntry for passed candidate", () => {
