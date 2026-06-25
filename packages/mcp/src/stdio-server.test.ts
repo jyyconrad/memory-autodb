@@ -121,6 +121,20 @@ describe("buildCallToolHandler", () => {
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("kaboom");
   });
+
+  test("passes string tool results through without JSON quoting", async () => {
+    const textTool = {
+      name: "text_result",
+      description: "returns text",
+      inputSchema: { type: "object", properties: {} },
+      execute: async () => "1. User prefers concise replies",
+    };
+    const call = buildCallToolHandler([textTool]);
+
+    const result = await call("text_result", {});
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toBe("1. User prefers concise replies");
+  });
 });
 
 describe("createMcpStdioServer", () => {

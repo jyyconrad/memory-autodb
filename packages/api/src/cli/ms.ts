@@ -23,7 +23,7 @@ import { registerWhyCliCommands } from "../../../../adapters/openclaw/cli-why.js
 import { registerEvalCliCommands } from "./eval.js";
 
 const LEGACY_ENV_PATH = path.join(resolveLegacyHomeDir(), ".env");
-const CLI_VERSION = "2026.3.9";
+const CLI_VERSION = "1.0.4";
 
 function loadDotEnv(envPath: string): void {
   if (!fs.existsSync(envPath)) {

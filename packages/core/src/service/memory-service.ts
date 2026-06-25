@@ -71,6 +71,10 @@ export class DefaultMemoryService implements MemoryService {
   }
 
   async storeMemory(input: StoreMemoryInput): Promise<StoreMemoryResult> {
+    if (typeof input.record.text !== "string" || input.record.text.trim().length === 0) {
+      throw new Error("memory record text is required");
+    }
+
     // DEFECT-001 防御：如果 scope 是 undefined，先归一化避免 validateScopeForWrite 崩溃。
     // 注意：显式传递空字符串仍会被 validateScopeForWrite 拒绝（保持严格校验）。
     const normalizedScope = input.record.scope

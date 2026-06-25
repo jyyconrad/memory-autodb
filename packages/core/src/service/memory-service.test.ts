@@ -507,6 +507,19 @@ describe("DefaultMemoryService", () => {
     expect(repository.stored[0].text).toBe("User prefers concise replies");
   });
 
+  test("rejects storeMemory records without non-empty text before embedding", async () => {
+    const repository = new FakeRepository();
+    const embeddings = new FakeEmbeddings();
+    const service = new DefaultMemoryService({ repository, embeddings });
+
+    await expect(service.storeMemory({ record: makeRecord({ text: "" }) })).rejects.toThrow(
+      /record text is required/,
+    );
+
+    expect(embeddings.texts).toEqual([]);
+    expect(repository.stored).toHaveLength(0);
+  });
+
   test("computes embedding when storeMemory receives record with empty vector array", async () => {
     const repository = new FakeRepository();
     const embeddings = new FakeEmbeddings();

@@ -32,7 +32,7 @@
 
 ## 项目信息
 
-- 当前版本：v1.0.2
+- 当前版本：v1.0.4
 - 开源协议：MIT
 - 仓库地址：[GitHub](https://github.com/your-org/mengshu)
 

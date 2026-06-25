@@ -27,7 +27,7 @@ import type { LlmClient } from "../../core/src/runtime/llm/llm-client.js";
 import { createMcpMemoryTools, type McpMemoryTool } from "./tools.js";
 
 const SERVER_NAME = "mengshu";
-const SERVER_VERSION = "2026.3.9";
+const SERVER_VERSION = "1.0.4";
 
 export interface McpStdioServerOptions {
   service: MemoryService;
@@ -97,7 +97,7 @@ export function buildCallToolHandler(tools: McpMemoryTool[]) {
     try {
       const result = await tool.execute(args);
       return {
-        content: [{ type: "text", text: JSON.stringify(result) }],
+        content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }],
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

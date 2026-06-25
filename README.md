@@ -226,7 +226,7 @@ npm run eval:quick        # golden set 评估
 
 ## 版本
 
-当前版本：**v1.0.2**
+当前版本：**v1.0.4**
 
 - 4 套评分体系（valueScore/importance/confidence/hotness）
 - 11 闸门 validator
